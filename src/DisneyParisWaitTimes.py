@@ -1,4 +1,9 @@
-from requests import get
+import os
+import pytz
+import random
+import yaml
+
+from requests import get, post
 from requests.exceptions import RequestException
 from contextlib import closing
 from bs4 import BeautifulSoup
@@ -6,20 +11,10 @@ import pandas as pd
 import time as sleep_time
 from datetime import datetime, time, timedelta
 
-import pytz
-import random
+from src.settings import INPUT_FOLDER, OUTPUT_FOLDER
+from src.utilities import read_yaml, post_message_to_slack, time_to_seconds
 
-from twilio.rest import Client
-
-
-def time_to_seconds(t):
-    """
-    Convert a datetime.time object to the number of seconds since midnight.
-
-    :param t: A datetime.time object
-    :return: The number of seconds since midnight
-    """
-    return t.hour * 3600 + t.minute * 60 + t.second
+# from twilio.rest import Client
 
 
 
@@ -63,32 +58,20 @@ def get_html_content(url, multiplier=1):
 
     except RequestException as e:
         print('Error during requests to {0} : {1}'.format(url, str(e)))
-  
-
-
-def test_sms():
-    
-
-    ## Your Account Sid and Auth Token from twilio.com/console
-    account_sid = ''
-    auth_token = ''
-    client = Client(account_sid, auth_token)
-
-    message = client.messages \
-                    .create(
-                         body="Join Earth's mightiest heroes. Like Kevin Bacon.",
-                         from_='+61 488 853 988',
-                         to='+61 414 916 458'
-                     )
-
-    print(message.sid)
 
 
         
 
 if __name__ == "__main__":
 
-    # test_sms()
+    channel_id = 'internal_test_bot'
+    message = 'testing automated slack message'
+    # credentials = read_yaml('credentials.yml', INPUT_FOLDER)
+
+    # post_message_to_slack(credentials['DISNEY_SLACK_BOT']['SLACK_CHANNEL'],
+    #                       message,
+    #                       credentials['DISNEY_SLACK_BOT']['SLACK_TOKEN'],
+    #                       credentials['DISNEY_SLACK_BOT']['SLACK_URL'])
 
     Url_list = ['https://www.thrill-data.com/waits/attraction/disneyland-paris/buzzlightyearlaserblast/',
                 'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/'''
@@ -122,7 +105,7 @@ if __name__ == "__main__":
     current_paris_datetime = datetime.now(paris_timezone)
 
     opening_time = time(hour=8,minute=30,second=0)
-    closing_time = time(hour=11,minute=5,second=0)
+    closing_time = time(hour=23,minute=0,second=0)
 
     wait_time_data = []
 
