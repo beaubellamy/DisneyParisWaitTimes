@@ -64,9 +64,7 @@ def get_html_content(url, multiplier=1):
 
 if __name__ == "__main__":
 
-    channel_id = 'internal_test_bot'
-    message = 'testing automated slack message'
-    # credentials = read_yaml('credentials.yml', INPUT_FOLDER)
+    credentials = read_yaml('credentials.yml', INPUT_FOLDER)
 
     # post_message_to_slack(credentials['DISNEY_SLACK_BOT']['SLACK_CHANNEL'],
     #                       message,
@@ -74,7 +72,7 @@ if __name__ == "__main__":
     #                       credentials['DISNEY_SLACK_BOT']['SLACK_URL'])
 
     Url_list = ['https://www.thrill-data.com/waits/attraction/disneyland-paris/buzzlightyearlaserblast/',
-                'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/'''
+                'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/'
                 'https://www.thrill-data.com/waits/attraction/disneyland-paris/lesmysteresdunautilus/',
                 'https://www.thrill-data.com/waits/attraction/disneyland-paris/orbitron/',
                 'https://www.thrill-data.com/waits/attraction/disneyland-paris/phantommanor/',
@@ -144,13 +142,14 @@ if __name__ == "__main__":
 
     while opening_time < current_paris_datetime.time() < closing_time:
        print (f'scrape the wait times: {current_paris_datetime.time()}')
+
        for url in baseUrl:
            print (url)
            content = get_html_content(url)
            html = BeautifulSoup(content, 'html.parser')
            wait_time_div = html.find("div", {'id': "wait-menu"})
     
-           data_element = {'ride': url,
+           data_element = {'ride': url.split('/')[-2],
                            'date': current_paris_datetime.date(),
                            'time': current_paris_datetime.time(),
                            }
@@ -163,16 +162,23 @@ if __name__ == "__main__":
 
        # Wait 5 minutes and repeat
        print ('waiting')
-       sleep_time.sleep(60)
+       sleep_time.sleep(300)
        current_paris_datetime = datetime.now(paris_timezone)
         
 
 
-    ## Create a DataFrame from the dictionary
-    #df = pd.DataFrame(wait_time_data)
+    # Create a DataFrame from the dictionary
+    df = pd.DataFrame(wait_time_data)
 
-    ## Save the DataFrame to a CSV file
-    #csv_file = 'wait_time.csv'
-    #df.to_csv(csv_file, index=False)
+    # Save the DataFrame to a CSV file
+    paris_date = current_paris_datetime.date().strftime('%Y-%m-%d')
+    csv_file = f'wait_time_{paris_date}.csv'
+    df.to_csv(csv_file, index=False)
+
+    message = f'saved wait time file for {paris_date}'
+    post_message_to_slack(credentials['DISNEY_SLACK_BOT']['SLACK_CHANNEL'],
+                          message,
+                          credentials['DISNEY_SLACK_BOT']['SLACK_TOKEN'],
+                          credentials['DISNEY_SLACK_BOT']['SLACK_URL'])
     
 
