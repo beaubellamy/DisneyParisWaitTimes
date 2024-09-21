@@ -1,7 +1,11 @@
 */.suo
 */.wsuo
-*/77ce0669-286a-4d74-81ba-63110c2e6c54.vsidx
+*/.vsidx
 /.idea/modules.xml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.vs/slnx.sqlite
 *./vcs.xml
+/.vs/DisneyParisWaitTimes/v17/.suo
+/.vs/DisneyParisWaitTimes/v17/.wsuo
+/.vs/DisneyParisWaitTimes/FileContentIndex/*
+/data/*
