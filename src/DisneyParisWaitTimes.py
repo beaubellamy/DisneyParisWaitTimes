@@ -12,7 +12,8 @@ import time as sleep_time
 from datetime import datetime, time, timedelta
 
 from src.settings import INPUT_FOLDER, OUTPUT_FOLDER
-from src.utilities import read_yaml, post_message_to_slack, time_to_seconds
+from src.utilities import (read_yaml, post_message_to_slack,
+                           time_to_seconds, convert_to_float)
 
 # from twilio.rest import Client
 
@@ -102,7 +103,7 @@ if __name__ == "__main__":
     # Get the current time in Paris
     current_paris_datetime = datetime.now(paris_timezone)
 
-    opening_time = time(hour=8,minute=30,second=0)
+    opening_time = time(hour=9,minute=0,second=0)
     closing_time = time(hour=23,minute=0,second=0)
 
     wait_time_data = []
@@ -155,8 +156,8 @@ if __name__ == "__main__":
                            }
 
            wait_div = wait_time_div.find_all('div', {'class': 'data-number'})
-           data_element['Wait_time'] = float(wait_div[0].get_text(strip=True))
-           data_element['daily_average'] = float(wait_div[1].get_text(strip=True))
+           data_element['Wait_time'] = convert_to_float(wait_div[0].get_text(strip=True))
+           data_element['daily_average'] = convert_to_float(wait_div[1].get_text(strip=True))
 
            wait_time_data.append(data_element)
 
@@ -164,8 +165,6 @@ if __name__ == "__main__":
        print ('waiting')
        sleep_time.sleep(300)
        current_paris_datetime = datetime.now(paris_timezone)
-        
-
 
     # Create a DataFrame from the dictionary
     df = pd.DataFrame(wait_time_data)

@@ -21,6 +21,11 @@ def time_to_seconds(t):
     """
     return t.hour * 3600 + t.minute * 60 + t.second
 
+def convert_to_float(s):
+    try:
+        return float(s)
+    except ValueError:
+        return -9
 
 def post_message_to_slack(channel, message, SLACK_TOKEN, SLACK_URL):
 
