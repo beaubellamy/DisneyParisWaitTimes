@@ -90,6 +90,25 @@ if __name__ == "__main__":
 
     # test_sms()
 
+    Url_list = ['https://www.thrill-data.com/waits/attraction/disneyland-paris/buzzlightyearlaserblast/',
+                'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/'''
+                'https://www.thrill-data.com/waits/attraction/disneyland-paris/lesmysteresdunautilus/',
+                'https://www.thrill-data.com/waits/attraction/disneyland-paris/orbitron/',
+                'https://www.thrill-data.com/waits/attraction/disneyland-paris/phantommanor/',
+                'https://www.thrill-data.com/waits/attraction/disneyland-paris/piratesofthecaribbean/',
+                'https://www.thrill-data.com/waits/attraction/disneyland-paris/startourstheadventurescontinue/',
+                'https://www.thrill-data.com/waits/attraction/disneyland-paris/starwarshyperspacemountain/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/avengersassembleflightforce/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/carsquatrerouesrallye/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/carsroadtrip/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/crushscoaster/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/ratatouilletheadventure/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/slinkydogzigzagspin/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/spidermanwebadventure/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/thetwilightzonetowerofterror/',
+                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/toysoldiersparachutedrop/'
+                ]
+
     baseUrl = ['https://www.thrill-data.com/waits/attraction/disneyland-paris/itsasmallworld/',
               'https://www.thrill-data.com/waits/attraction/disneyland-paris/buzzlightyearlaserblast/',
               'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/',
