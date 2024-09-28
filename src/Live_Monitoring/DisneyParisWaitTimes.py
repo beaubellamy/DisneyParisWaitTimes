@@ -15,9 +15,6 @@ from src.settings import INPUT_FOLDER, OUTPUT_FOLDER
 from src.utilities import (read_yaml, post_message_to_slack,
                            time_to_seconds, convert_to_float)
 
-# from twilio.rest import Client
-
-
 
 def is_good_response(resp):
     """
@@ -35,14 +32,13 @@ def get_html_content(url, multiplier=1):
     agent to help identify who you are.
     """
 
-    # Be a responisble scraper.
-    # The multiplier is used to exponentially increase the delay when 
-    # there are several attempts at connecting to the url
+    # Responisble scraper: including multiplier to exponentially
+    # increase the delay when there are several attempts at
+    # connecting to the url
     randomSleep = random.uniform(2,10)
     sleep_time.sleep(randomSleep*multiplier)
 
-    #Choose the next proxy in the list
-    #proxy = next(proxy_pool)
+    # specify the browser header
     headers = ({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'})
    
     # Get the html from the url
@@ -61,17 +57,19 @@ def get_html_content(url, multiplier=1):
         print('Error during requests to {0} : {1}'.format(url, str(e)))
 
 
-        
-
 if __name__ == "__main__":
+
+    # monitor the live wait times
+
+    # intended to by run on the day of attendance to monitor the wait
+    # times live and notify us of any dip below thresholds
+
+    # Todo: reconfigure the ride list to maintain a ride specific threshold
+    # Todo: add in check for ride threshold and send slack notification if below the threshold
 
     credentials = read_yaml('credentials.yml', INPUT_FOLDER)
 
-    # post_message_to_slack(credentials['DISNEY_SLACK_BOT']['SLACK_CHANNEL'],
-    #                       message,
-    #                       credentials['DISNEY_SLACK_BOT']['SLACK_TOKEN'],
-    #                       credentials['DISNEY_SLACK_BOT']['SLACK_URL'])
-
+    # master list
     Url_list = ['https://www.thrill-data.com/waits/attraction/disneyland-paris/buzzlightyearlaserblast/',
                 'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/'
                 'https://www.thrill-data.com/waits/attraction/disneyland-paris/lesmysteresdunautilus/',
@@ -91,6 +89,7 @@ if __name__ == "__main__":
                 'https://www.thrill-data.com/waits/attraction/walt-disney-studios/toysoldiersparachutedrop/'
                 ]
 
+    # test list
     baseUrl = ['https://www.thrill-data.com/waits/attraction/disneyland-paris/itsasmallworld/',
               'https://www.thrill-data.com/waits/attraction/disneyland-paris/buzzlightyearlaserblast/',
               'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/',
@@ -103,6 +102,7 @@ if __name__ == "__main__":
     # Get the current time in Paris
     current_paris_datetime = datetime.now(paris_timezone)
 
+    # Set the opening and closing times of the park
     opening_time = time(hour=9,minute=0,second=0)
     closing_time = time(hour=23,minute=0,second=0)
 
@@ -111,8 +111,9 @@ if __name__ == "__main__":
 
     if current_paris_datetime.time() < opening_time:
         # wait until the park opens
+        # opening times may vary
 
-        # Calculate the time difference
+        # Calculate the time difference - to wait
         opening_time_sec = time_to_seconds(opening_time)
         current_paris_time_sec = time_to_seconds(current_paris_datetime.time())
 
@@ -123,24 +124,7 @@ if __name__ == "__main__":
         print (f'waiting {hours}:{minutes} until the park is open')
         sleep_time.sleep(time_difference)
 
-
-    # if current_paris_datetime.time() > closing_time:
-    #     # wait until the park opens tomorrow
-    #
-    #     # Calculate tomorrow's date
-    #     tomorrow = current_paris_datetime.date() + timedelta(days=1)
-    #
-    #     # Create a datetime object for the opening time tomorrow
-    #     opening_datetime_tomorrow = datetime.combine(tomorrow, opening_time, tzinfo=paris_timezone)
-    #
-    #     # Calculate the time difference
-    #     time_difference = opening_datetime_tomorrow - current_paris_datetime
-    #
-    #     # Optional: Convert time_difference to hours and minutes
-    #     hours, remainder = divmod(time_difference.seconds, 3600)
-    #     minutes, _ = divmod(remainder, 60)
-    #     print(f"Time until opening: {time_difference.days} days, {hours} hours, {minutes} minutes")
-
+    # Monitor the wait times
     while opening_time < current_paris_datetime.time() < closing_time:
        print (f'scrape the wait times: {current_paris_datetime.time()}')
 
@@ -156,10 +140,15 @@ if __name__ == "__main__":
                            }
 
            wait_div = wait_time_div.find_all('div', {'class': 'data-number'})
-           data_element['Wait_time'] = convert_to_float(wait_div[0].get_text(strip=True))
+           wait_time = convert_to_float(wait_div[0].get_text(strip=True))
+           data_element['Wait_time'] = wait_time
            data_element['daily_average'] = convert_to_float(wait_div[1].get_text(strip=True))
 
            wait_time_data.append(data_element)
+
+           # if wait_time is below ride threshold
+
+           # notify my via slack
 
        # Wait 5 minutes and repeat
        print ('waiting')
