@@ -27,8 +27,11 @@ def convert_to_float(s):
     except ValueError:
         return -9
 
-def post_message_to_slack(channel, message, SLACK_TOKEN, SLACK_URL):
+def post_message_to_slack(credentials, message):
 
+    channel = credentials['DISNEY_SLACK_BOT']['SLACK_CHANNEL'],
+    SLACK_TOKEN = credentials['DISNEY_SLACK_BOT']['SLACK_TOKEN'],
+    SLACK_URL = credentials['DISNEY_SLACK_BOT']['SLACK_URL']
 
     headers = {
         'Content-Type': 'application/json',
