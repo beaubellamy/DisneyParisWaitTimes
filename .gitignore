@@ -9,3 +9,4 @@
 /.vs/DisneyParisWaitTimes/v17/.wsuo
 /.vs/DisneyParisWaitTimes/FileContentIndex/*
 /data/*
+/src/wait_time*
