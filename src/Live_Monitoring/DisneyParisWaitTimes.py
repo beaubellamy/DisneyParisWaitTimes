@@ -64,37 +64,60 @@ if __name__ == "__main__":
     # intended to by run on the day of attendance to monitor the wait
     # times live and notify us of any dip below thresholds
 
-    # Todo: reconfigure the ride list to maintain a ride specific threshold
-    # Todo: add in check for ride threshold and send slack notification if below the threshold
+    # Todo: add in check for ride threshold and send slack notification if below the threshold,
+    # how to deal with the low wait time in early and late times to avoid constant notifications
 
     credentials = read_yaml('credentials.yml', INPUT_FOLDER)
 
     # master list
-    Url_list = ['https://www.thrill-data.com/waits/attraction/disneyland-paris/buzzlightyearlaserblast/',
-                'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/'
-                'https://www.thrill-data.com/waits/attraction/disneyland-paris/lesmysteresdunautilus/',
-                'https://www.thrill-data.com/waits/attraction/disneyland-paris/orbitron/',
-                'https://www.thrill-data.com/waits/attraction/disneyland-paris/phantommanor/',
-                'https://www.thrill-data.com/waits/attraction/disneyland-paris/piratesofthecaribbean/',
-                'https://www.thrill-data.com/waits/attraction/disneyland-paris/startourstheadventurescontinue/',
-                'https://www.thrill-data.com/waits/attraction/disneyland-paris/starwarshyperspacemountain/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/avengersassembleflightforce/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/carsquatrerouesrallye/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/carsroadtrip/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/crushscoaster/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/ratatouilletheadventure/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/slinkydogzigzagspin/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/spidermanwebadventure/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/thetwilightzonetowerofterror/',
-                'https://www.thrill-data.com/waits/attraction/walt-disney-studios/toysoldiersparachutedrop/'
-                ]
+    base_ulr = 'https://www.thrill-data.com/waits/attraction'
+    urlDictionary = [{'url': f'{base_ulr}/disneyland-paris/buzzlightyearlaserblast/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/disneyland-paris/indianajonesandthetempleofperil/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/disneyland-paris/lesmysteresdunautilus/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/disneyland-paris/orbitron/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/disneyland-paris/phantommanor/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/disneyland-paris/piratesofthecaribbean/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/disneyland-paris/startourstheadventurescontinue/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/disneyland-paris/starwarshyperspacemountain/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/avengersassembleflightforce/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/carsquatrerouesrallye/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/carsroadtrip/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/crushscoaster/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/ratatouilletheadventure/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/slinkydogzigzagspin/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/spidermanwebadventure/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/thetwilightzonetowerofterror/',
+                      'threshold': 30},
+                     {'url': f'{base_ulr}/walt-disney-studios/toysoldiersparachutedrop/',
+                      'threshold': 30},
+                     ]
 
-    # test list
-    baseUrl = ['https://www.thrill-data.com/waits/attraction/disneyland-paris/itsasmallworld/',
-              'https://www.thrill-data.com/waits/attraction/disneyland-paris/buzzlightyearlaserblast/',
-              'https://www.thrill-data.com/waits/attraction/disneyland-paris/indianajonesandthetempleofperil/',
-              'https://www.thrill-data.com/waits/attraction/disneyland-paris/starwarshyperspacemountain/'
-    ]
+    # # test list
+    # urlDictionary = [{'url': f'{base_ulr}/disneyland-paris/itsasmallworld/',
+    #                   'threshold': 30},
+    #                  {'url': f'{base_ulr}/disneyland-paris/buzzlightyearlaserblast/',
+    #                   'threshold': 30},
+    #                  {'url': f'{base_ulr}/disneyland-paris/indianajonesandthetempleofperil/',
+    #                   'threshold': 30},
+    #                  {'url': f'{base_ulr}/disneyland-paris/starwarshyperspacemountain/',
+    #                   'threshold': 30}
+    #                 ]
+
 
     # Define the Paris timezone
     paris_timezone = pytz.timezone('Europe/Paris')
@@ -110,8 +133,7 @@ if __name__ == "__main__":
 
 
     if current_paris_datetime.time() < opening_time:
-        # wait until the park opens
-        # opening times may vary
+        # wait until the park opens, opening times may vary
 
         # Calculate the time difference - to wait
         opening_time_sec = time_to_seconds(opening_time)
@@ -126,34 +148,42 @@ if __name__ == "__main__":
 
     # Monitor the wait times
     while opening_time < current_paris_datetime.time() < closing_time:
-       print (f'scrape the wait times: {current_paris_datetime.time()}')
+        print (f'scrape the wait times: {current_paris_datetime.time()}')
 
-       for url in baseUrl:
-           print (url)
-           content = get_html_content(url)
-           html = BeautifulSoup(content, 'html.parser')
-           wait_time_div = html.find("div", {'id': "wait-menu"})
-    
-           data_element = {'ride': url.split('/')[-2],
-                           'date': current_paris_datetime.date(),
-                           'time': current_paris_datetime.time(),
-                           }
+        # for url in baseUrl:
+        for item in urlDictionary:
+            rideUrl = item['url']
+            print (rideUrl)
+            content = get_html_content(rideUrl)
+            html = BeautifulSoup(content, 'html.parser')
+            wait_time_div = html.find("div", {'id': "wait-menu"})
+            ride_name = rideUrl.split('/')[-2]
 
-           wait_div = wait_time_div.find_all('div', {'class': 'data-number'})
-           wait_time = convert_to_float(wait_div[0].get_text(strip=True))
-           data_element['Wait_time'] = wait_time
-           data_element['daily_average'] = convert_to_float(wait_div[1].get_text(strip=True))
+            data_element = {'ride': ride_name,
+                            'date': current_paris_datetime.date(),
+                            'time': current_paris_datetime.time(),
+                            }
 
-           wait_time_data.append(data_element)
+            wait_div = wait_time_div.find_all('div', {'class': 'data-number'})
+            wait_time = convert_to_float(wait_div[0].get_text(strip=True))
+            data_element['Wait_time'] = wait_time
+            data_element['daily_average'] = convert_to_float(wait_div[1].get_text(strip=True))
 
-           # if wait_time is below ride threshold
+            wait_time_data.append(data_element)
 
-           # notify my via slack
+            # if wait_time is below ride threshold
+            if 0 < wait_time < item['threshold']:
+                # notify my via slack
+                ### how to deal with early and late hours when wait times are expected to be low???
+                message = f'SLACK: {ride_name} wait time ({wait_time} min) is below threshold'
+                print (message)
+                # post_message_to_slack(credentials, message)
 
-       # Wait 5 minutes and repeat
-       print ('waiting')
-       sleep_time.sleep(300)
-       current_paris_datetime = datetime.now(paris_timezone)
+        # Wait 5 minutes and repeat
+        print ('waiting')
+        sleep_time.sleep(300)
+        current_paris_datetime = datetime.now(paris_timezone)
+
 
     # Create a DataFrame from the dictionary
     df = pd.DataFrame(wait_time_data)
@@ -164,9 +194,6 @@ if __name__ == "__main__":
     df.to_csv(csv_file, index=False)
 
     message = f'saved wait time file for {paris_date}'
-    post_message_to_slack(credentials['DISNEY_SLACK_BOT']['SLACK_CHANNEL'],
-                          message,
-                          credentials['DISNEY_SLACK_BOT']['SLACK_TOKEN'],
-                          credentials['DISNEY_SLACK_BOT']['SLACK_URL'])
+    post_message_to_slack(credentials, message)
     
 
