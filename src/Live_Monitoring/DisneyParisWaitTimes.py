@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     # Todo: add in check for ride threshold and send slack notification if below the threshold,
     # how to deal with the low wait time in early and late times to avoid constant notifications
-
+    process_freq_min = 15
     credentials = read_yaml('credentials.yml', INPUT_FOLDER)
 
     # master list
@@ -163,7 +163,7 @@ if __name__ == "__main__":
             wait_time_div = html.find("div", {'id': "wait-menu"})
             ride_name = rideUrl.split('/')[-2]
 
-            rounded_time = current_paris_datetime.floor('5 min').time()
+            rounded_time = current_paris_datetime.floor(f'{process_freq_min} min').time()
             data_element = {'ride': ride_name,
                             'date': current_paris_datetime.date(),
                             'time': rounded_time,
@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
         # Wait 5 minutes and repeat
         print ('waiting')
-        sleep_time.sleep((current_paris_datetime.ceil('5 min') -
+        sleep_time.sleep((current_paris_datetime.ceil(f'{process_freq_min} min') -
                           current_paris_datetime).total_seconds)
         current_paris_datetime = datetime.now(paris_timezone)
 
