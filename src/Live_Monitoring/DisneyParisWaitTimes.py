@@ -123,31 +123,35 @@ if __name__ == "__main__":
     paris_timezone = pytz.timezone('Europe/Paris')
 
     # Get the current time in Paris
-    current_paris_datetime = datetime.now(paris_timezone)
+    # current_paris_datetime = datetime.now(paris_timezone)
+    current_paris_datetime = pd.Timestamp.now(tz=paris_timezone)
 
     # Set the opening and closing times of the park
-    opening_time = time(hour=9,minute=0,second=0)
-    closing_time = time(hour=23,minute=0,second=0)
+    # opening_time = time(hour=9,minute=0,second=0)
+    # closing_time = time(hour=23,minute=0,second=0)
+    opening_time = current_paris_datetime.replace(hour=9, minute=0, second=0, microsecond=0)
+    closing_time = current_paris_datetime.replace(hour=23, minute=0, second=0, microsecond=0)
 
     wait_time_data = []
 
 
-    if current_paris_datetime.time() < opening_time:
+    if current_paris_datetime < opening_time:
         # wait until the park opens, opening times may vary
 
         # Calculate the time difference - to wait
-        opening_time_sec = time_to_seconds(opening_time)
-        current_paris_time_sec = time_to_seconds(current_paris_datetime.time())
-
-        time_difference = opening_time_sec - current_paris_time_sec
+        # opening_time_sec = time_to_seconds(opening_time)
+        # current_paris_time_sec = time_to_seconds(current_paris_datetime.time())
+        #
+        # time_difference = opening_time_sec - current_paris_time_sec
+        time_difference = (opening_time - current_paris_datetime).total_seconds()
 
         hours, remainder = divmod(time_difference, 3600)
         minutes, _ = divmod(remainder, 60)
-        print (f'waiting {hours}:{minutes} until the park is open')
+        print (f'waiting {int(hours)}:{int(minutes)} until the park is open')
         sleep_time.sleep(time_difference)
 
     # Monitor the wait times
-    while opening_time < current_paris_datetime.time() < closing_time:
+    while opening_time < current_paris_datetime < closing_time:
         print (f'scrape the wait times: {current_paris_datetime.time()}')
 
         # for url in baseUrl:
@@ -159,9 +163,10 @@ if __name__ == "__main__":
             wait_time_div = html.find("div", {'id': "wait-menu"})
             ride_name = rideUrl.split('/')[-2]
 
+            rounded_time = current_paris_datetime.floor('5 min').time()
             data_element = {'ride': ride_name,
                             'date': current_paris_datetime.date(),
-                            'time': current_paris_datetime.time(),
+                            'time': rounded_time,
                             }
 
             wait_div = wait_time_div.find_all('div', {'class': 'data-number'})
@@ -181,7 +186,8 @@ if __name__ == "__main__":
 
         # Wait 5 minutes and repeat
         print ('waiting')
-        sleep_time.sleep(300)
+        sleep_time.sleep((current_paris_datetime.ceil('5 min') -
+                          current_paris_datetime).total_seconds)
         current_paris_datetime = datetime.now(paris_timezone)
 
 
