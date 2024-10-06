@@ -31,20 +31,23 @@ def processDisneyRideWaitTimes(file_list):
     return ride_wait_times[['Ride', 'Date_Time', 'Date', 'Time', 'Wait Time']].reset_index(drop=True)
 
 # Ride	Date	Time	Wait Time	Max Temp	Avg Temp	min Temp	Precipitation
-def feature_yesterday(df):
+def feature_previous_n_day(df, new_feature='Yesterday', n_days=1):
 
     df_copy = df.copy()
-    df['Yesterday'] = df['Date_Time'] - pd.Timedelta(days=1)
+    df[new_feature] = df['Date_Time'] - pd.Timedelta(days=n_days)
 
     feature_df = pd.merge(df,
                           df_copy[['Ride', 'Date_Time', 'Wait Time']],
-                          how='left', left_on=['Ride', 'Yesterday'], right_on=['Ride', 'Date_Time'])
+                          how='left', left_on=['Ride', new_feature], right_on=['Ride', 'Date_Time'])
 
-    feature_df.drop(columns=['Yesterday', 'Date_Time_y'], inplace=True)
+    feature_df.drop(columns=[new_feature, 'Date_Time_y'], inplace=True)
     feature_df.rename(columns={'Date_Time_x': 'Date_Time', 'Wait Time_x': 'Wait Time',
-                               'Wait Time_y': 'Yesterdays_wait_time'}, inplace=True)
+                               'Wait Time_y': f'{new_feature}_wait_time'}, inplace=True)
 
     return feature_df
+
+def feature_yesterday(df):
+    return feature_previous_n_day(df,new_feature='Yesterday', n_days=1)
 
 
 def feature_past7day_average(df):
@@ -77,13 +80,13 @@ def feature_past7day_average(df):
 
     return final_df
 
-def feature_sametime_lastweek():
-    # measurment for the same time of day, 7 days aga
-    pass
+def feature_sametime_lastweek(df):
+    # measurment for the same time of day, 7 days ago
+    return feature_previous_n_day(df, new_feature='LastWeek', n_days=7)
 
 
-def feature_sametime_lastmonth():
-    pass
+def feature_sametime_lastmonth(df):
+    return feature_previous_n_day(df, new_feature='LastMonth', n_days=28)
 
 
 
@@ -110,6 +113,8 @@ if __name__ == "__main__":
     # Todo: add feature engineering
     combined_df2 = feature_yesterday(combined_df)
     past7day = feature_past7day_average(combined_df2)
+    df7days_ago = feature_sametime_lastweek(combined_df2)
+    df28days_ago = feature_sametime_lastmonth(combined_df2)
 
     combined_df3 = pd.merge(combined_df2, past7day, how='left', on=['Ride', 'Date_Time'])
 
