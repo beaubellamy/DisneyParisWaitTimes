@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     # Todo: add in check for ride threshold and send slack notification if below the threshold,
     # how to deal with the low wait time in early and late times to avoid constant notifications
-    process_freq_min = 15
+    process_freq_min = 5
     credentials = read_yaml('credentials.yml', INPUT_FOLDER)
 
     # master list
@@ -106,18 +106,6 @@ if __name__ == "__main__":
                      {'url': f'{base_ulr}/walt-disney-studios/toysoldiersparachutedrop/',
                       'threshold': 30},
                      ]
-
-    # # test list
-    # urlDictionary = [{'url': f'{base_ulr}/disneyland-paris/itsasmallworld/',
-    #                   'threshold': 30},
-    #                  {'url': f'{base_ulr}/disneyland-paris/buzzlightyearlaserblast/',
-    #                   'threshold': 30},
-    #                  {'url': f'{base_ulr}/disneyland-paris/indianajonesandthetempleofperil/',
-    #                   'threshold': 30},
-    #                  {'url': f'{base_ulr}/disneyland-paris/starwarshyperspacemountain/',
-    #                   'threshold': 30}
-    #                 ]
-
 
     # Define the Paris timezone
     paris_timezone = pytz.timezone('Europe/Paris')
