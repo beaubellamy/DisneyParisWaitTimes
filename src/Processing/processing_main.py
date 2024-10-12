@@ -55,27 +55,26 @@ def feature_past7day_average(df):
 
     past7day_list = []
 
-    for t in df['Time'].unique().tolist():
+    for ride in df['Ride'].unique().tolist():
+        for ride_time in df['Time'].unique().tolist():
 
-        ride_data = df[(df['Ride'] == 'Avengers Assemble: Flight Force') & (df['Time'] == t)]
-        ride_data = ride_data.set_index('Date')
+            ride_data = df[(df['Ride'] == ride) & (df['Time'] == ride_time)]
+            ride_data = ride_data.set_index('Date')
 
-        # Note: The shifting is to ensure we dont have a data leakage - only considering the past 7
-        # days of measurements (exclusive of "today")
-        # The data occassionally has missing data, so when this shifting occurs, it can bring in data
-        # for a date that is outside the intended 7 day range
-        # Todo: ensure the df has a measurment for everyday and every time interval (NaN), so this
-        #  window function will be correct - this should be done after processDisneyRideWaitTimes()
-        ride_data['Shifted_Wait_Time'] = ride_data['Wait Time'].shift(1)
+            # Note: The shifting is to ensure we dont have a data leakage - only considering the past 7
+            # days of measurements (exclusive of "today")
+            # The data occassionally has missing data, so when this shifting occurs, it can bring in data
+            # for a date that is outside the intended 7 day range
+            # Todo: ensure the df has a measurment for everyday and every time interval (NaN), so this
+            #  window function will be correct - this should be done after processDisneyRideWaitTimes()
+            ride_data['Shifted_Wait_Time'] = ride_data['Wait Time'].shift(1)
 
-        # ride_data['Rolling_Avg_7_Days'] = ride_data['Wait Time'].rolling(window=7, min_periods=1).mean()
-        ride_data['Rolling_Avg_7_Days'] = ride_data['Shifted_Wait_Time'].rolling(window='7D', min_periods=1).mean()
+            # ride_data['Rolling_Avg_7_Days'] = ride_data['Wait Time'].rolling(window=7, min_periods=1).mean()
+            ride_data['Rolling_Avg_7_Days'] = ride_data['Shifted_Wait_Time'].rolling(window='7D', min_periods=1).mean()
 
-        past7day_list.append(ride_data[['Ride', 'Date_Time', 'Rolling_Avg_7_Days']])
+            past7day_list.append(ride_data[['Ride', 'Date_Time', 'Rolling_Avg_7_Days']])
 
-        # df2 = pd.merge(df, ride_data[['Ride', 'Date', 'Time', 'Rolling_Avg_7_Days']], on=['Ride', 'Date', 'Time'])
-        # df2.to_csv(os.path.join(OUTPUT_FOLDER, f'avengers_window7_t_{t.strftime("%H%M")}.csv'))
-
+    # Construct the final df with all rides and resulting average 7 day wate time
     final_df = pd.concat(past7day_list, ignore_index=True)
 
     final_df.sort_values(by=['Ride', 'Date_Time'], inplace=True)
@@ -89,6 +88,7 @@ def feature_sametime_lastweek(df):
 
 
 def feature_sametime_lastmonth(df):
+    # measurment for the same time of day, 4 weeks ago
     return feature_previous_n_day(df, new_feature='LastMonth', n_days=28)
 
 
