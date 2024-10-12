@@ -6,7 +6,7 @@ Under Construction
 - Processing:
 
     - Processes the existing "downloaded" wait time files.
-    - Merges this data with downloaded[ historical weather data](https://www.wunderground.com/history/monthly/fr/mauregard/LFPG/date/2024-8)
+    - Merges this data with downloaded [historical weather data](https://www.wunderground.com/history/monthly/fr/mauregard/LFPG/date/2024-8)
 
 - Feature Engineering
 

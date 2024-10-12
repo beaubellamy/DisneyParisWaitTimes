@@ -44,7 +44,7 @@ def feature_previous_n_day(df, new_feature='Yesterday', n_days=1):
     feature_df.rename(columns={'Date_Time_x': 'Date_Time', 'Wait Time_x': 'Wait Time',
                                'Wait Time_y': f'{new_feature}_wait_time'}, inplace=True)
 
-    return feature_df
+    return feature_df[['Ride', 'Date_Time', f'{new_feature}_wait_time']]
 
 def feature_yesterday(df):
     return feature_previous_n_day(df,new_feature='Yesterday', n_days=1)
@@ -78,6 +78,9 @@ def feature_past7day_average(df):
 
     final_df = pd.concat(past7day_list, ignore_index=True)
 
+    final_df.sort_values(by=['Ride', 'Date_Time'], inplace=True)
+    final_df.reset_index(inplace=True, drop=True)
+
     return final_df
 
 def feature_sametime_lastweek(df):
@@ -110,16 +113,27 @@ if __name__ == "__main__":
                            on='Date')
     combined_df['Date'] = pd.to_datetime(combined_df['Date'])
 
-    # Todo: add feature engineering
-    combined_df2 = feature_yesterday(combined_df)
-    past7day = feature_past7day_average(combined_df2)
-    df7days_ago = feature_sametime_lastweek(combined_df2)
-    df28days_ago = feature_sametime_lastmonth(combined_df2)
+    # Additional feature engineering
+    yesterday_df = feature_yesterday(combined_df)
+    past7day = feature_past7day_average(combined_df)
+    df7days_ago = feature_sametime_lastweek(combined_df)
+    df28days_ago = feature_sametime_lastmonth(combined_df)
 
-    combined_df3 = pd.merge(combined_df2, past7day, how='left', on=['Ride', 'Date_Time'])
+    # Added all features to the dataframe
+    combined_df2 = pd.merge(combined_df, yesterday_df, how='left', on=['Ride', 'Date_Time'])
+    combined_df2 = pd.merge(combined_df2, past7day, how='left', on=['Ride', 'Date_Time'])
+    combined_df2 = pd.merge(combined_df2, df7days_ago, how='left', on=['Ride', 'Date_Time'])
+    combined_df2 = pd.merge(combined_df2, df28days_ago, how='left', on=['Ride', 'Date_Time'])
+
+    # Ignore the first month of data - mostly null values for new features
+    combined_df3 = combined_df2[combined_df2['Date'] > '2023-02-01']
+    combined_df3.reset_index(inplace=True, drop=True)
+
+    # interpolate the missing data
+    combined_df3.interpolate(method='linear', inplace=True)
 
     # Save the combined DataFrame to a new CSV file
-    combined_df3.to_csv(os.path.join(OUTPUT_FOLDER, 'data_wth_7day_average3.csv'), index=False)
+    combined_df3.to_csv(os.path.join(OUTPUT_FOLDER, 'data_wth_features.csv'), index=False)
 
 
 
