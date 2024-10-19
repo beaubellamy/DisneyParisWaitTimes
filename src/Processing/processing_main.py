@@ -3,7 +3,7 @@ import glob
 import pandas as pd
 # from datetime import timedelta
 
-from src.settings import INPUT_FOLDER, OUTPUT_FOLDER
+from src.settings import INPUT_FOLDER, PROCESSED_FOLDER
 
 
 def processDisneyRideWaitTimes(file_list):
@@ -22,13 +22,14 @@ def processDisneyRideWaitTimes(file_list):
     # convert 'Data/Time' to date time field and seperate into date and time field
     # round to nearest 5 min interval to keep times consistent
     ride_wait_times['Date_Time'] = pd.to_datetime(ride_wait_times['Date/Time']).dt.round('5 min')
-    ride_wait_times['Date'] = ride_wait_times['Date_Time'].dt.date
-    ride_wait_times['Time'] = ride_wait_times['Date_Time'].dt.time
+    # ride_wait_times['Date'] = ride_wait_times['Date_Time'].dt.date
+    # ride_wait_times['Time'] = ride_wait_times['Date_Time'].dt.time
 
     # sort by ride name and date time
-    ride_wait_times.sort_values(by=['Ride', 'Date', 'Time'], inplace=True)
+    ride_wait_times.sort_values(by=['Ride', 'Date_Time'], inplace=True)
 
-    return ride_wait_times[['Ride', 'Date_Time', 'Date', 'Time', 'Wait Time']].reset_index(drop=True)
+    # return ride_wait_times[['Ride', 'Date_Time', 'Date', 'Time', 'Wait Time']].reset_index(drop=True)
+    return ride_wait_times[['Ride', 'Date_Time', 'Wait Time']].reset_index(drop=True)
 
 # Ride	Date	Time	Wait Time	Max Temp	Avg Temp	min Temp	Precipitation
 def feature_previous_n_day(df, new_feature='Yesterday', n_days=1):
@@ -92,6 +93,41 @@ def feature_sametime_lastmonth(df):
     return feature_previous_n_day(df, new_feature='LastMonth', n_days=28)
 
 
+def resample_data(df):
+
+    # ensure data has consistent intervals
+    min_date = min(df['Date_Time'].dt.date)
+    max_date = max(df['Date_Time'].dt.date)
+    # set the data interval
+    reference_data_time = pd.date_range(start=min_date, end=max_date, freq='5 min')
+
+    reference = pd.DataFrame(reference_data_time)
+    reference.rename(columns={0: 'Date_Time'}, inplace=True)
+    reference['Time'] = reference['Date_Time'].dt.time
+    # Only interested in times when the park was open
+    reference = reference[(reference['Time'] > pd.to_datetime('08:00:00').time()) &
+                          (reference['Time'] < pd.to_datetime('20:00:00').time())]
+
+    # resample the data for each ride
+    resampled_list = []
+    for ride in df['Ride'].unique().tolist():
+        ride_df = df[df['Ride'] == ride]
+        ride_df = pd.merge(reference['Date_Time'],
+                           ride_df[['Ride', 'Date_Time', 'Wait Time']],
+                           on=['Date_Time'], how='left')
+
+        # Assume missing data was a result of ride closure
+        ride_df['Ride'] = ride_df['Ride'].ffill()
+        ride_df['Ride'] = ride_df['Ride'].bfill()
+        ride_df['Wait Time'] = ride_df['Wait Time'].fillna(value=0)
+
+        resampled_list.append(ride_df)
+
+    # Combine all DataFrames into a single DataFrame
+    resampled_df = pd.concat(resampled_list, ignore_index=True)
+
+    return  resampled_df.reset_index(drop=True)
+
 
 if __name__ == "__main__":
 
@@ -100,12 +136,20 @@ if __name__ == "__main__":
 
     wait_time_df = processDisneyRideWaitTimes(wait_time_downloads)
 
-    # Todo: insert data for missing days (NaN)
+    # Resample data and fill in missing measurements
+    wait_time_df = resample_data(wait_time_df)
 
     # Load weather data and combine
     weather_file = os.path.join(INPUT_FOLDER, 'Paris weather.csv')
     weather = pd.read_csv(weather_file)
     weather['Date'] = pd.to_datetime(weather['Date'], format='%d/%m/%Y').dt.date
+
+    # Additional feature engineering
+    wait_time_df['Date'] = wait_time_df['Date_Time'].dt.date
+    wait_time_df['Time'] = wait_time_df['Date_Time'].dt.time
+    wait_time_df['Day'] = pd.to_datetime(wait_time_df['Date']).dt.day_name()
+    wait_time_df['is_weekday'] = pd.to_datetime(wait_time_df['Date']).dt.weekday < 5
+    # combined_df['PublicHoliday'] = combined_df['Date_Time'].dt.time
 
     # merge weather data with ride wait times
     combined_df = pd.merge(wait_time_df,
@@ -113,7 +157,6 @@ if __name__ == "__main__":
                            on='Date')
     combined_df['Date'] = pd.to_datetime(combined_df['Date'])
 
-    # Additional feature engineering
     yesterday_df = feature_yesterday(combined_df)
     past7day = feature_past7day_average(combined_df)
     df7days_ago = feature_sametime_lastweek(combined_df)
@@ -130,10 +173,10 @@ if __name__ == "__main__":
     combined_df3.reset_index(inplace=True, drop=True)
 
     # interpolate the missing data
-    combined_df3.interpolate(method='linear', inplace=True)
+    # combined_df3.interpolate(method='linear', inplace=True)
 
     # Save the combined DataFrame to a new CSV file
-    combined_df3.to_csv(os.path.join(OUTPUT_FOLDER, 'data_wth_features.csv'), index=False)
+    combined_df3.to_csv(os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv'), index=False)
 
 
 
