@@ -7,6 +7,9 @@ import time
 import logging
 from src.settings import INPUT_FOLDER, OUTPUT_FOLDER, PROCESSED_FOLDER
 
+from pandas.plotting import autocorrelation_plot
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.graphics.tsaplots import plot_pacf
 
 
 def sarima(df):
@@ -36,7 +39,7 @@ def sarima(df):
     # df['Wait Time'] = df['Wait Time'].ffill()  # Forward fill any missing values
 
     # Step 4: Track the training time
-    start_time = time.time()
+    # start_time = time.time()
     # logging.info("Training started...")
 
     # We assume daily seasonality (144 periods per day = 24 hours * 60 minutes / 5-minute intervals)
@@ -52,11 +55,11 @@ def sarima(df):
     # sarima_result = model.fit(disp=False)  # Disable built-in output from SARIMAX fit
     sarima_result = model.fit(disp=True)  # Disable built-in output from SARIMAX fit
 
-    end_time = time.time()
-    total_training_time = end_time - start_time
+    # end_time = time.time()
+    # total_training_time = end_time - start_time
 
     # logging.info(f"Training completed in {total_training_time:.2f} seconds.")
-    print(f'Training completed in {total_training_time:.2f} seconds.')
+    # print(f'Training completed in {total_training_time:.2f} seconds.')
 
     # Step 6: Evaluate the model's performance using in-sample fit statistics
     # logging.info(f"Model Summary: \n{sarima_result.summary()}")
@@ -93,6 +96,16 @@ if __name__ == "__main__":
     # prediction should be predicting the wait time for (at least
     # 30 mnin intervals) for the next day
     ride1 = df[df['Ride'] == 'Avengers Assemble: Flight Force']
+
+    plot_acf(ride1['Wait Time'])
+    plt.show()
+
+    autocorrelation_plot(ride1['Wait Time'])
+
+
+    plot_pacf(ride1['Wait Time'])
+    plt.show()
+
     sarima(ride1)
 
 
