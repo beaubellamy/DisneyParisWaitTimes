@@ -126,6 +126,11 @@ def resample_data(df):
     # Combine all DataFrames into a single DataFrame
     resampled_df = pd.concat(resampled_list, ignore_index=True)
 
+    # drop duplicates - some files contain multiple values for the resampled time
+    resampled_df.sort_values(by=['Ride', 'Date_Time', 'Wait Time'], inplace=True)
+    resampled_df.drop_duplicates(subset=['Date_Time', 'Ride'], keep='last', inplace=True)
+
+
     return  resampled_df.reset_index(drop=True)
 
 
