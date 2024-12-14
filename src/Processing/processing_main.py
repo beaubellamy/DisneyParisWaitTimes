@@ -5,6 +5,14 @@ import pandas as pd
 
 from src.settings import INPUT_FOLDER, PROCESSED_FOLDER
 
+def convert_datetime_to_sec_since_midnight(datetime):
+    return datetime.dt.hour * 3600 + datetime.dt.minute * 60 + datetime.dt.second
+
+
+def convert_datetime_to_unix_date(datetime):
+    date_part = datetime.dt.floor('D')
+    return date_part.astype('int64') // 10 ** 9
+
 
 def processDisneyRideWaitTimes(file_list):
 
@@ -47,6 +55,7 @@ def feature_previous_n_day(df, new_feature='Yesterday', n_days=1):
 
     return feature_df[['Ride', 'Date_Time', f'{new_feature}_wait_time']]
 
+
 def feature_yesterday(df):
     return feature_previous_n_day(df,new_feature='Yesterday', n_days=1)
 
@@ -82,6 +91,7 @@ def feature_past7day_average(df):
     final_df.reset_index(inplace=True, drop=True)
 
     return final_df
+
 
 def feature_sametime_lastweek(df):
     # measurment for the same time of day, 7 days ago
@@ -152,8 +162,8 @@ if __name__ == "__main__":
     # Additional feature engineering
     wait_time_df['Date'] = wait_time_df['Date_Time'].dt.date
     wait_time_df['Time'] = wait_time_df['Date_Time'].dt.time
-    wait_time_df['Day'] = pd.to_datetime(wait_time_df['Date']).dt.day_name()
-    wait_time_df['is_weekday'] = pd.to_datetime(wait_time_df['Date']).dt.weekday < 5
+    wait_time_df['Day'] = pd.to_datetime(wait_time_df['Date']).dt.weekday
+    wait_time_df['is_weekday'] = (pd.to_datetime(wait_time_df['Date']).dt.weekday < 5).astype(int)
     # combined_df['PublicHoliday'] = combined_df['Date_Time'].dt.time
 
     # merge weather data with ride wait times
@@ -180,6 +190,12 @@ if __name__ == "__main__":
     # interpolate the missing data
     # combined_df3.interpolate(method='linear', inplace=True)
 
+    # Convert data types for modelling
+    # combined_df3['Time2'] = combined_df3['Time'].map(lambda x: convert_datetime_sec_since_midnight(x))
+    combined_df3['Date'] = convert_datetime_to_unix_date(combined_df3['Date_Time'])
+    combined_df3['Time'] = convert_datetime_to_sec_since_midnight(combined_df3['Date_Time'])
+
+    combined_df3.drop(columns=['Yesterday', 'LastWeek', 'LastMonth'], inplace=True)
     # Save the combined DataFrame to a new CSV file
     combined_df3.to_csv(os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv'), index=False)
 
