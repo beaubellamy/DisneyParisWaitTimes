@@ -11,6 +11,13 @@ from pandas.plotting import autocorrelation_plot
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
 
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+# from sklearn.model_selection import KFold
+from sklearn import metrics
+
+
+
 
 def sarima(df):
 
@@ -93,22 +100,51 @@ if __name__ == "__main__":
     model_data_file = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
     df = pd.read_csv(model_data_file)
 
-    # prediction should be predicting the wait time for (at least
-    # 30 mnin intervals) for the next day
-    ride1 = df[df['Ride'] == 'Avengers Assemble: Flight Force']
+    # import datetime
+    # import time
+    #
+    # x = time.strptime('00:01:00,000'.split(',')[0], '%H:%M:%S')
+    # datetime.timedelta(hours=x.tm_hour, minutes=x.tm_min, seconds=x.tm_sec).total_seconds()
 
-    plot_acf(ride1['Wait Time'])
-    plt.show()
+    # prediction will be predicting the wait time for each 5 min interval of the next day
+    # loop over each ride
+    # for ride in df['Ride'].unique():
+    ride = 'Avengers Assemble: Flight Force'
+    ride1 = df[df['Ride'] == ride]
+    ride1.drop(columns=['Date_Time', 'Ride'], inplace=True)
 
-    autocorrelation_plot(ride1['Wait Time'])
+    # loop over each 5 min interval of the day
+    # for timepoint in ride1['Time'].unique():
+    timepoint = 36000   # 10:00
+    timedata = ride1[ride1['Time'] == timepoint]
+
+    # reduce variability of targets
+    target = np.log(timedata['Wait Time'])
+    target.replace([np.inf, -np.inf], 0, inplace=True)
+
+    timedata.drop(columns=['Wait Time'], inplace=True)
+    # 80% training & 25% testing
+    x_train, x_test, y_train, y_test = train_test_split(timedata, target, test_size=0.2)
 
 
-    plot_pacf(ride1['Wait Time'])
-    plt.show()
+    lm = LinearRegression()
+    model = lm.fit(x_train, y_train)
+    # Make Prediction on test set
+    linear_predictions = lm.predict(x_test)
 
-    sarima(ride1)
+    print(f'Ride: {ride}: Time: {timepoint}')
+    print(f'Mean Absolute Error:', metrics.mean_absolute_error(y_test, linear_predictions))
+    print(f'Mean Squared Error:', metrics.mean_squared_error(y_test, linear_predictions))
+    print(f'Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, linear_predictions)))
 
+    # Caculating Error
+    errors = round(metrics.mean_absolute_error(y_test, linear_predictions), 2)
+    # mean Absolute Percentage Error
+    mape = 100 * (errors / y_test)
+    mape.replace([np.inf, -np.inf], 0, inplace=True)
 
+    acc_linear = (100 - np.mean(mape))
+    print('Accuracy:', round(acc_linear, 2), '%')
 
 
 
