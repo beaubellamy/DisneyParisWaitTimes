@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from sklearn.metrics import accuracy_score
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 import matplotlib.pyplot as plt
 import time
@@ -13,11 +14,78 @@ from statsmodels.graphics.tsaplots import plot_pacf
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.kernel_ridge import KernelRidge
 # from sklearn.model_selection import KFold
 from sklearn import metrics
 
 
+def Predict_LinearRegresion(x_train, x_test, y_train):
+    lm = LinearRegression()
+    model = lm.fit(x_train, y_train)
+    # Make Prediction on test set
+    y_pred = lm.predict(x_test)
 
+    # Calculate metricx
+    mae = metrics.mean_absolute_error(y_test, y_pred)
+    mse = metrics.mean_squared_error(y_test, y_pred)
+    rmse = np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+    # accuracy_score(y_test, linear_predictions)
+
+    # Calculating Error
+    errors = round(metrics.mean_absolute_error(y_test, y_pred), 2)
+    # mean Absolute Percentage Error
+    mape = 100 * (errors / y_test)
+    mape.replace([np.inf, -np.inf], 0, inplace=True)
+    accuracy = (100 - np.mean(mape))
+
+    return mae, mse, rmse, errors, mape, accuracy
+
+
+def Predict_RidgeRegresion(x_train, x_test, y_train):
+    ridgeReg = KernelRidge(alpha=1.0)
+    ridgeReg.fit(x_train, y_train)
+    y_pred = ridgeReg.predict(x_test)
+
+    # Calculate metricx
+    mae = metrics.mean_absolute_error(y_test, y_pred)
+    mse = metrics.mean_squared_error(y_test, y_pred)
+    rmse = np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+    # accuracy_score(y_test, linear_predictions)
+
+    # Calculating Error
+    errors = round(metrics.mean_absolute_error(y_test, y_pred), 2)
+    # mean Absolute Percentage Error
+    mape = 100 * (errors / y_test)
+    mape.replace([np.inf, -np.inf], 0, inplace=True)
+    accuracy = (100 - np.mean(mape))
+
+    return mae, mse, rmse, errors, mape, accuracy
+
+
+def calculate_metrics(y_test, predictions):
+    mea =  metrics.mean_absolute_error(y_test, predictions)
+    mse = metrics.mean_squared_error(y_test, predictions)
+    rmse = np.sqrt(metrics.mean_squared_error(y_test, predictions))
+
+    # Calculating Error
+    errors = round(metrics.mean_absolute_error(y_test, predictions), 2)
+    # mean Absolute Percentage Error
+    mape = 100 * (errors / y_test)
+    mape.replace([np.inf, -np.inf], 0, inplace=True)
+
+    acc_linear = (100 - np.mean(mape))
+    accuracy = round(acc_linear, 2)
+
+
+def update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy):
+    ride_metrics['model'].append(model)
+    ride_metrics['mae'].append(mae)
+    ride_metrics['mse'].append(mse)
+    ride_metrics['rmse'].append(rmse)
+    ride_metrics['mape'].append(mape.mean())
+    ride_metrics['accuracy'].append(accuracy)
+
+    return ride_metrics
 
 def sarima(df):
 
@@ -100,6 +168,8 @@ if __name__ == "__main__":
     model_data_file = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
     df = pd.read_csv(model_data_file)
 
+    results = pd.DataFrame()
+
     # import datetime
     # import time
     #
@@ -113,38 +183,54 @@ if __name__ == "__main__":
     ride1 = df[df['Ride'] == ride]
     ride1.drop(columns=['Date_Time', 'Ride'], inplace=True)
 
+    ride_metrics = {'model': [], 'mae': [], 'mse': [], 'rmse': [], 'mape': [], 'accuracy': []}
     # loop over each 5 min interval of the day
-    # for timepoint in ride1['Time'].unique():
-    timepoint = 36000   # 10:00
-    timedata = ride1[ride1['Time'] == timepoint]
+    for timepoint in ride1['Time'].unique():
+        # timepoint = 36000   # 10:00
+        timedata = ride1[ride1['Time'] == timepoint]
 
-    # reduce variability of targets
-    target = np.log(timedata['Wait Time'])
-    target.replace([np.inf, -np.inf], 0, inplace=True)
+        # reduce variability of targets
+        target = timedata['Wait Time']
+        # target = np.log(timedata['Wait Time'])
+        # target.replace([np.inf, -np.inf], 0, inplace=True)
 
-    timedata.drop(columns=['Wait Time'], inplace=True)
-    # 80% training & 25% testing
-    x_train, x_test, y_train, y_test = train_test_split(timedata, target, test_size=0.2)
+        timedata.drop(columns=['Wait Time'], inplace=True)
+        # 80% training & 25% testing
+        x_train, x_test, y_train, y_test = train_test_split(timedata, target, test_size=0.2)
 
+        model = 'Linear Regression'
+        mae, mse, rmse, errors, mape, accuracy = Predict_LinearRegresion(x_train, x_test, y_train)
+        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
-    lm = LinearRegression()
-    model = lm.fit(x_train, y_train)
-    # Make Prediction on test set
-    linear_predictions = lm.predict(x_test)
-
-    print(f'Ride: {ride}: Time: {timepoint}')
-    print(f'Mean Absolute Error:', metrics.mean_absolute_error(y_test, linear_predictions))
-    print(f'Mean Squared Error:', metrics.mean_squared_error(y_test, linear_predictions))
-    print(f'Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, linear_predictions)))
-
-    # Caculating Error
-    errors = round(metrics.mean_absolute_error(y_test, linear_predictions), 2)
-    # mean Absolute Percentage Error
-    mape = 100 * (errors / y_test)
-    mape.replace([np.inf, -np.inf], 0, inplace=True)
-
-    acc_linear = (100 - np.mean(mape))
-    print('Accuracy:', round(acc_linear, 2), '%')
+        model = 'Ridge Regression'
+        mae, mse, rmse, errors, mape, accuracy = Predict_RidgeRegresion(x_train, x_test, y_train)
+        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
 
+        print(f'Ride: {ride}: Time: {timepoint}')
+        # mae = metrics.mean_absolute_error(y_test, linear_predictions)
+        # mse = metrics.mean_squared_error(y_test, linear_predictions)
+        # rmse = np.sqrt(metrics.mean_squared_error(y_test, linear_predictions))
+        # # accuracy_score(y_test, linear_predictions)
+        #
+        # # Calculating Error
+        # errors = round(metrics.mean_absolute_error(y_test, linear_predictions), 2)
+        # # mean Absolute Percentage Error
+        # mape = 100 * (errors / y_test)
+        # mape.replace([np.inf, -np.inf], 0, inplace=True)
+        # accuracy = (100 - np.mean(mape))
 
+        # ride_metrics['model'].append(model)
+        # ride_metrics['mae'].append(mae)
+        # ride_metrics['mse'].append(mse)
+        # ride_metrics['rmse'].append(rmse)
+        # ride_metrics['mape'].append(mape.mean())
+        # ride_metrics['accuracy'].append(accuracy)
+
+    metric_df = pd.DataFrame(ride_metrics)
+    ride_results = metric_df.groupby(by=['model']).mean()
+    ride_results['ride'] = ride
+
+    results = pd.concat([results, ride_results])
+
+    print (results.shape)
