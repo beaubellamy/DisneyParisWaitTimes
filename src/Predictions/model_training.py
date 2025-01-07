@@ -107,31 +107,6 @@ def Predict_RidgeRegresion(x_train, x_test, y_train, y_test):
     return mae, mse, rmse, errors, mape, accuracy
 
 
-def calculate_metrics(y_test, predictions):
-    mea =  metrics.mean_absolute_error(y_test, predictions)
-    mse = metrics.mean_squared_error(y_test, predictions)
-    rmse = np.sqrt(metrics.mean_squared_error(y_test, predictions))
-
-    # Calculating Error
-    errors = round(metrics.mean_absolute_error(y_test, predictions), 2)
-    # mean Absolute Percentage Error
-    mape = 100 * (errors / y_test)
-    mape.replace([np.inf, -np.inf], 0, inplace=True)
-
-    acc_linear = (100 - np.mean(mape))
-    accuracy = round(acc_linear, 2)
-
-
-def update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy):
-    ride_metrics['model'].append(model)
-    ride_metrics['mae'].append(mae)
-    ride_metrics['mse'].append(mse)
-    ride_metrics['rmse'].append(rmse)
-    ride_metrics['mape'].append(mape.mean())
-    ride_metrics['accuracy'].append(accuracy)
-
-    return ride_metrics
-
 def sarima(df):
 
 
