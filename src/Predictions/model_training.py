@@ -19,7 +19,7 @@ from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
 
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.kernel_ridge import KernelRidge
 # from sklearn.model_selection import KFold
 from sklearn import metrics
@@ -47,8 +47,9 @@ def Predict_LinearRegresion(x_train, x_test, y_train):
     return mae, mse, rmse, errors, mape, accuracy
 
 
-def Predict_RidgeRegresion(x_train, x_test, y_train):
-    ridgeReg = KernelRidge(alpha=1.0)
+def Predict_RidgeRegresion(x_train, x_test, y_train, y_test):
+    # ridgeReg = KernelRidge(alpha=1.0, kernel='linear')
+    ridgeReg = Ridge(alpha=1.0)
     ridgeReg.fit(x_train, y_train)
     y_pred = ridgeReg.predict(x_test)
 
@@ -168,10 +169,7 @@ def sarima(df):
     return
 
 
-
-
-
-def randomforestregressor(X_train, X_test, y_train):
+def randomforestregressor(X_train, X_test, y_train, y_test):
     """
     Predicts the wait time for the same time on the next day.
 
@@ -208,25 +206,14 @@ def randomforestregressor(X_train, X_test, y_train):
 
     return mae, mse, rmse, errors, mape, accuracy
 
-    # # Predict for the next day
-    # next_day_prediction = model.predict(next_day)[0]
-    # print(f"Predicted Wait Time for the next day at {next_day['Time']}: {next_day_prediction:.2f} minutes")
-    #
-    # return model, next_day_prediction
 
 def run_5min_predictions(df):
     results = pd.DataFrame()
 
-    # import datetime
-    # import time
-    #
-    # x = time.strptime('00:01:00,000'.split(',')[0], '%H:%M:%S')
-    # datetime.timedelta(hours=x.tm_hour, minutes=x.tm_min, seconds=x.tm_sec).total_seconds()
-
     # prediction will be predicting the wait time for each 5 min interval of the next day
     # loop over each ride
     for ride in df['Ride'].unique():
-        # ride = 'Avengers Assemble: Flight Force'
+
         ride_df = df[df['Ride'] == ride]
         ride_df.drop(columns=['Date_Time', 'Ride'], inplace=True)
 
@@ -258,24 +245,6 @@ def run_5min_predictions(df):
             ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
             print(f'Ride: {ride}: Time: {timepoint}')
-            # mae = metrics.mean_absolute_error(y_test, linear_predictions)
-            # mse = metrics.mean_squared_error(y_test, linear_predictions)
-            # rmse = np.sqrt(metrics.mean_squared_error(y_test, linear_predictions))
-            # # accuracy_score(y_test, linear_predictions)
-            #
-            # # Calculating Error
-            # errors = round(metrics.mean_absolute_error(y_test, linear_predictions), 2)
-            # # mean Absolute Percentage Error
-            # mape = 100 * (errors / y_test)
-            # mape.replace([np.inf, -np.inf], 0, inplace=True)
-            # accuracy = (100 - np.mean(mape))
-
-            # ride_metrics['model'].append(model)
-            # ride_metrics['mae'].append(mae)
-            # ride_metrics['mse'].append(mse)
-            # ride_metrics['rmse'].append(rmse)
-            # ride_metrics['mape'].append(mape.mean())
-            # ride_metrics['accuracy'].append(accuracy)
 
         metric_df = pd.DataFrame(ride_metrics)
         ride_results = metric_df.groupby(by=['model']).mean()
