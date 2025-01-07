@@ -25,7 +25,45 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn import metrics
 
 
-def Predict_LinearRegresion(x_train, x_test, y_train):
+
+def split_data(df, target, test_size=0.2):
+
+    train_size = int(len(df) * (1- test_size))
+    x_train = df[:train_size]
+    x_test = df[train_size:]
+    y_train = target[:train_size]
+    y_test = target[train_size:]
+
+    return x_train, x_test, y_train, y_test
+
+
+def calculate_metrics(y_test, predictions):
+    mea =  metrics.mean_absolute_error(y_test, predictions)
+    mse = metrics.mean_squared_error(y_test, predictions)
+    rmse = np.sqrt(metrics.mean_squared_error(y_test, predictions))
+
+    # Calculating Error
+    errors = round(metrics.mean_absolute_error(y_test, predictions), 2)
+    # mean Absolute Percentage Error
+    mape = 100 * (errors / y_test)
+    mape.replace([np.inf, -np.inf], 0, inplace=True)
+
+    acc_linear = (100 - np.mean(mape))
+    accuracy = round(acc_linear, 2)
+
+
+def update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy):
+    ride_metrics['model'].append(model)
+    ride_metrics['mae'].append(mae)
+    ride_metrics['mse'].append(mse)
+    ride_metrics['rmse'].append(rmse)
+    ride_metrics['mape'].append(mape.mean())
+    ride_metrics['accuracy'].append(accuracy)
+
+    return ride_metrics
+
+
+def Predict_LinearRegresion(x_train, x_test, y_train, y_test):
     lm = LinearRegression()
     model = lm.fit(x_train, y_train)
     # Make Prediction on test set
@@ -229,8 +267,8 @@ def run_5min_predictions(df):
             # target.replace([np.inf, -np.inf], 0, inplace=True)
 
             timedata.drop(columns=['Wait Time'], inplace=True)
-            # 80% training & 25% testing
-            x_train, x_test, y_train, y_test = train_test_split(timedata, target, test_size=0.2)
+            # 80% training & 25% testing - ensure order is maintained
+            x_train, x_test, y_train, y_test = split_data(timedata, target, test_size=0.2)
 
             model = 'Linear Regression'
             mae, mse, rmse, errors, mape, accuracy = Predict_LinearRegresion(x_train, x_test, y_train)
