@@ -292,39 +292,14 @@ def run_5min_predictions(df):
     results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-5min.csv'))
     return
 
-
-# Example usage:
-# Load your dataset
-# data = pd.read_csv('ride_wait_times.csv')
-# model, prediction = predict_wait_time(data)
-
-if __name__ == "__main__":
-    # This is where the training of the model will be performed
-
-    model_data_file = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
-    df = pd.read_csv(model_data_file)
-
-    # run_5min_predictions(df)
+def run_daily_predictions(df):
     results = pd.DataFrame()
-
-    # import datetime
-    # import time
-    #
-    # x = time.strptime('00:01:00,000'.split(',')[0], '%H:%M:%S')
-    # datetime.timedelta(hours=x.tm_hour, minutes=x.tm_min, seconds=x.tm_sec).total_seconds()
-
-    # prediction will be predicting the wait time for each 5 min interval of the next day
-    # loop over each ride
     for ride in df['Ride'].unique():
-        # ride = 'Avengers Assemble: Flight Force'
+
         ride_df = df[df['Ride'] == ride]
         ride_df.drop(columns=['Date_Time', 'Ride'], inplace=True)
 
         ride_metrics = {'model': [], 'mae': [], 'mse': [], 'rmse': [], 'mape': [], 'accuracy': []}
-        # loop over each 5 min interval of the day
-        # for timepoint in ride_df['Time'].unique():
-        #
-        #     timedata = ride_df[ride_df['Time'] == timepoint]
 
         # reduce variability of targets
         target = ride_df['Wait Time']
@@ -333,44 +308,79 @@ if __name__ == "__main__":
 
         ride_df.drop(columns=['Wait Time'], inplace=True)
         # 80% training & 25% testing
-        x_train, x_test, y_train, y_test = train_test_split(ride_df, target, test_size=0.2)
+        x_train, x_test, y_train, y_test = split_data(ride_df, target, test_size=0.2)
 
         model = 'Linear Regression'
-        mae, mse, rmse, errors, mape, accuracy = Predict_LinearRegresion(x_train, x_test, y_train)
+        mae, mse, rmse, errors, mape, accuracy = Predict_LinearRegresion(x_train, x_test, y_train, y_test)
         ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
-        # model = 'Ridge Regression'
-        # mae, mse, rmse, errors, mape, accuracy = Predict_RidgeRegresion(x_train, x_test, y_train)
-        # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+        model = 'Ridge Regression'
+        mae, mse, rmse, errors, mape, accuracy = Predict_RidgeRegresion(x_train, x_test, y_train, y_test)
+        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
         model = 'Random Forest Regressor'
-        mae, mse, rmse, errors, mape, accuracy = randomforestregressor(x_train, x_test, y_train)
+        mae, mse, rmse, errors, mape, accuracy = randomforestregressor(x_train, x_test, y_train, y_test)
         ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
         print(f'Ride: {ride}')
-        # mae = metrics.mean_absolute_error(y_test, linear_predictions)
-        # mse = metrics.mean_squared_error(y_test, linear_predictions)
-        # rmse = np.sqrt(metrics.mean_squared_error(y_test, linear_predictions))
-        # # accuracy_score(y_test, linear_predictions)
-        #
-        # # Calculating Error
-        # errors = round(metrics.mean_absolute_error(y_test, linear_predictions), 2)
-        # # mean Absolute Percentage Error
-        # mape = 100 * (errors / y_test)
-        # mape.replace([np.inf, -np.inf], 0, inplace=True)
-        # accuracy = (100 - np.mean(mape))
-
-        # ride_metrics['model'].append(model)
-        # ride_metrics['mae'].append(mae)
-        # ride_metrics['mse'].append(mse)
-        # ride_metrics['rmse'].append(rmse)
-        # ride_metrics['mape'].append(mape.mean())
-        # ride_metrics['accuracy'].append(accuracy)
 
         metric_df = pd.DataFrame(ride_metrics)
         ride_results = metric_df.groupby(by=['model']).mean()
         ride_results['ride'] = ride
 
         results = pd.concat([results, ride_results])
-    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts.csv'))
-    print (results.shape)
+
+    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-daily.csv'))
+
+    return
+
+
+if __name__ == "__main__":
+    # This is where the training of the model will be performed
+
+    model_data_file = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
+    df = pd.read_csv(model_data_file)
+
+    # run_5min_predictions(df)
+    run_daily_predictions(df)
+
+    # results = pd.DataFrame()
+    #
+    # # loop over each ride
+    # for ride in df['Ride'].unique():
+    #
+    #     ride_df = df[df['Ride'] == ride]
+    #     ride_df.drop(columns=['Date_Time', 'Ride'], inplace=True)
+    #
+    #     ride_metrics = {'model': [], 'mae': [], 'mse': [], 'rmse': [], 'mape': [], 'accuracy': []}
+    #
+    #     # reduce variability of targets
+    #     target = ride_df['Wait Time']
+    #     # target = np.log(timedata['Wait Time'])
+    #     # target.replace([np.inf, -np.inf], 0, inplace=True)
+    #
+    #     ride_df.drop(columns=['Wait Time'], inplace=True)
+    #     # 80% training & 25% testing
+    #     x_train, x_test, y_train, y_test = split_data(ride_df, target, test_size=0.2)
+    #
+    #     model = 'Linear Regression'
+    #     mae, mse, rmse, errors, mape, accuracy = Predict_LinearRegresion(x_train, x_test, y_train)
+    #     ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+    #
+    #     model = 'Ridge Regression'
+    #     mae, mse, rmse, errors, mape, accuracy = Predict_RidgeRegresion(x_train, x_test, y_train)
+    #     ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+    #
+    #     model = 'Random Forest Regressor'
+    #     mae, mse, rmse, errors, mape, accuracy = randomforestregressor(x_train, x_test, y_train)
+    #     ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+    #
+    #     print(f'Ride: {ride}')
+    #
+    #     metric_df = pd.DataFrame(ride_metrics)
+    #     ride_results = metric_df.groupby(by=['model']).mean()
+    #     ride_results['ride'] = ride
+    #
+    #     results = pd.concat([results, ride_results])
+    # results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-daily.csv'))
+    # print (results.shape)
