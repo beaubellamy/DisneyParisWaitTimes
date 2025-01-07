@@ -271,15 +271,15 @@ def run_5min_predictions(df):
             x_train, x_test, y_train, y_test = split_data(timedata, target, test_size=0.2)
 
             model = 'Linear Regression'
-            mae, mse, rmse, errors, mape, accuracy = Predict_LinearRegresion(x_train, x_test, y_train)
+            mae, mse, rmse, errors, mape, accuracy = Predict_LinearRegresion(x_train, x_test, y_train, y_test)
             ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
             model = 'Ridge Regression'
-            mae, mse, rmse, errors, mape, accuracy = Predict_RidgeRegresion(x_train, x_test, y_train)
+            mae, mse, rmse, errors, mape, accuracy = Predict_RidgeRegresion(x_train, x_test, y_train, y_test)
             ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
             model = 'Random Forest Regressor'
-            mae, mse, rmse, errors, mape, accuracy = randomforestregressor(x_train, x_test, y_train)
+            mae, mse, rmse, errors, mape, accuracy = randomforestregressor(x_train, x_test, y_train, y_test)
             ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
 
             print(f'Ride: {ride}: Time: {timepoint}')
@@ -289,7 +289,7 @@ def run_5min_predictions(df):
         ride_results['ride'] = ride
 
         results = pd.concat([results, ride_results])
-    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts.csv'))
+    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-5min.csv'))
     return
 
 
