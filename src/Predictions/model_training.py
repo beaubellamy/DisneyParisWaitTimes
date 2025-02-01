@@ -1,6 +1,9 @@
 import os
+from datetime import datetime
+
 import pandas as pd
 import numpy as np
+from datetime import timedelta
 from sklearn.metrics import accuracy_score
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 import matplotlib.pyplot as plt
@@ -351,21 +354,42 @@ def run_training(df):
                     'mape': [], 'mape_acc': [], 'accuracy': []}
     threshold = 10
 
-    # reduce variability of targets
-    target = df['Wait Time']
 
-    df.drop(columns=['Date_Time', 'Wait Time'], inplace=True)
+
+    # target = np.log(timedata['Wait Time'])
+    # target.replace([np.inf, -np.inf], 0, inplace=True)
+
     # onehot encode the ride labels
     df = pd.get_dummies(df, columns=['Ride'])
 
-    # 80% training & 25% testing
-    x_train, x_test, y_train, y_test = split_data(df, target, test_size=0.3)
+    # Manually split data
+    df['Date_Time'] = pd.to_datetime(df['Date_Time'])
+    train_date = df['Date_Time'].min().date() + timedelta(days=487)
+    test_date = df['Date_Time'].min().date() + timedelta(days=587)
+    train_df = df[df['Date_Time'] <= pd.to_datetime(train_date)]
+    test_df = df[(df['Date_Time'] > pd.to_datetime(train_date)) & (df['Date_Time'] <= pd.to_datetime(test_date))]
+    validation_df = df[df['Date_Time'] > pd.to_datetime(test_date)]
+
+    # extract the target
+    y_train = train_df['Wait Time']
+    y_test = test_df['Wait Time']
+    y_val = validation_df['Wait Time']
+
+    x_train = train_df.drop(columns=['Date_Time', 'Wait Time'])
+    x_test = test_df.drop(columns=['Date_Time', 'Wait Time'])
+    x_val = validation_df.drop(columns=['Date_Time', 'Wait Time'])
+
+
+
+    # 70% training & 30% testing
+    # x_train, x_test, y_train, y_test = split_data(df, target, test_size=0.3)
     # x_val, x_test, y_val, y_test = split_data(x_test, y_test, test_size=0.6)
 
     # Select MinMaxScaler for uniformly distributed features
     scaler = MinMaxScaler()
     x_train_scaled = scaler.fit_transform(x_train)
     x_test_scaled = scaler.transform(x_test)
+    x_val_scaled = scaler.transform(x_val)
 
     model = 'Linear Regression'
     mae, mse, rmse, mape, mape_acc, accuracy = (
