@@ -13,6 +13,8 @@ def convert_datetime_to_unix_date(datetime):
     date_part = datetime.dt.floor('D')
     return date_part.astype('int64') // 10 ** 9
 
+def convert_unix_date_to_datetime(unix_timestamp):
+    return pd.to_datetime(unix_timestamp, unit='s')
 
 def processDisneyRideWaitTimes(file_list):
 
@@ -22,10 +24,14 @@ def processDisneyRideWaitTimes(file_list):
     # Loop through the list of files and read each one into a DataFrame
     for file in file_list:
         df = pd.read_csv(file)
+        df['Date/Time'] = pd.to_datetime(df['Date/Time'], format='mixed').dt.strftime('%Y-%m-%d %H:%M:%S')
         dataframes.append(df)
 
     # Combine all DataFrames into a single DataFrame
     ride_wait_times = pd.concat(dataframes, ignore_index=True)
+
+    # drop duplicates
+    ride_wait_times.drop_duplicates(inplace=True)
 
     # convert 'Data/Time' to date time field and seperate into date and time field
     # round to nearest 5 min interval to keep times consistent
@@ -146,6 +152,7 @@ def resample_data(df):
 
 if __name__ == "__main__":
 
+    # https://www.thrill-data.com/users/login
     # csv's that contain the wait times for each ride for the past 2 years
     wait_time_downloads = glob.glob(os.path.join(INPUT_FOLDER, 'download*.csv'))
 
