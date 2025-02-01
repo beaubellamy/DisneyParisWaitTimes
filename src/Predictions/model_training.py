@@ -14,7 +14,7 @@ import pickle
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from pandas.plotting import autocorrelation_plot
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
@@ -53,18 +53,19 @@ def calculate_metrics(y_test, predictions):
     accuracy = round(acc_linear, 2)
 
 
-def update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy):
+def update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy):
     ride_metrics['model'].append(model)
     ride_metrics['mae'].append(mae)
     ride_metrics['mse'].append(mse)
     ride_metrics['rmse'].append(rmse)
     ride_metrics['mape'].append(mape.mean())
+    ride_metrics['mape_acc'].append(mape_acc)
     ride_metrics['accuracy'].append(accuracy)
 
     return ride_metrics
 
 
-def Predict_LinearRegresion(x_train, x_test, y_train, y_test, model_name='LinearRegresion'):
+def Predict_LinearRegresion(x_train, x_test, y_train, y_test, threshold, model_name='LinearRegresion'):
     lm = LinearRegression()
     model = lm.fit(x_train, y_train)
     # Make Prediction on test set
@@ -85,12 +86,17 @@ def Predict_LinearRegresion(x_train, x_test, y_train, y_test, model_name='Linear
     # mean Absolute Percentage Error
     mape = 100 * (errors / y_test)
     mape.replace([np.inf, -np.inf], 0, inplace=True)
-    accuracy = (100 - np.mean(mape))
+    mape_acc = (100 - np.mean(mape))
 
-    return mae, mse, rmse, errors, mape, accuracy
+    # adjusted mae
+    mae2 = abs(y_pred - y_test)
+    mae2.replace([np.inf, -np.inf], 0, inplace=True)
+    accuracy = 1 - mae2[mae2 > threshold].shape[0] / mae2.shape[0]
+
+    return mae, mse, rmse, mape, mape_acc, accuracy
 
 
-def Predict_RidgeRegresion(x_train, x_test, y_train, y_test, model_name='RidgeRegresssion'):
+def Predict_RidgeRegresion(x_train, x_test, y_train, y_test, threshold, model_name='RidgeRegresssion'):
     # ridgeReg = KernelRidge(alpha=1.0, kernel='linear')
     model = Ridge(alpha=1.0)
     model.fit(x_train, y_train)
@@ -111,9 +117,14 @@ def Predict_RidgeRegresion(x_train, x_test, y_train, y_test, model_name='RidgeRe
     # mean Absolute Percentage Error
     mape = 100 * (errors / y_test)
     mape.replace([np.inf, -np.inf], 0, inplace=True)
-    accuracy = (100 - np.mean(mape))
+    mape_acc = (100 - np.mean(mape))
 
-    return mae, mse, rmse, errors, mape, accuracy
+    # adjusted mae
+    mae2 = abs(y_pred - y_test)
+    mae2.replace([np.inf, -np.inf], 0, inplace=True)
+    accuracy = 1 - mae2[mae2 > threshold].shape[0] / mae2.shape[0]
+
+    return mae, mse, rmse, mape, mape_acc, accuracy
 
 
 def sarima(df):
@@ -191,7 +202,7 @@ def sarima(df):
     return
 
 
-def randomforestregressor(X_train, X_test, y_train, y_test, model_name='RFRegressor'):
+def randomforestregressor(X_train, X_test, y_train, y_test, threshold, model_name='RFRegressor'):
     """
     Predicts the wait time for the same time on the next day.
 
@@ -216,7 +227,6 @@ def randomforestregressor(X_train, X_test, y_train, y_test, model_name='RFRegres
     # Test the model
     y_pred = model.predict(X_test)
     mae = mean_absolute_error(y_test, y_pred)
-    print(f"Mean Absolute Error on Test Set: {mae:.2f} minutes")
 
     # Calculate metricx
     mae = metrics.mean_absolute_error(y_test, y_pred)
@@ -229,9 +239,14 @@ def randomforestregressor(X_train, X_test, y_train, y_test, model_name='RFRegres
     # mean Absolute Percentage Error
     mape = 100 * (errors / y_test)
     mape.replace([np.inf, -np.inf], 0, inplace=True)
-    accuracy = (100 - np.mean(mape))
+    mape_acc = (100 - np.mean(mape))
 
-    return mae, mse, rmse, errors, mape, accuracy
+    # adjusted mae
+    mae2 = abs(y_pred - y_test)
+    mae2.replace([np.inf, -np.inf], 0, inplace=True)
+    accuracy = 1 - mae2[mae2 > threshold].shape[0] / mae2.shape[0]
+
+    return mae, mse, rmse, mape, mape_acc, accuracy
 
 
 def run_5min_training(df):
@@ -260,19 +275,19 @@ def run_5min_training(df):
             x_train, x_test, y_train, y_test = split_data(timedata, target, test_size=0.2)
 
             model = 'Linear Regression'
-            mae, mse, rmse, errors, mape, accuracy = (
-                Predict_LinearRegresion(x_train, x_test, y_train, y_test, 'Linear5min.pkl'))
-            ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+            mae, mse, rmse, mape, mape_acc, accuracy = (
+                Predict_LinearRegresion(x_train, x_test, y_train, y_test, 'Linear5min'))
+            ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
             model = 'Ridge Regression'
-            mae, mse, rmse, errors, mape, accuracy = (
-                Predict_RidgeRegresion(x_train, x_test, y_train, y_test, 'Ridge5min.pkl'))
-            ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+            mae, mse, rmse, mape, mape_acc, accuracy = (
+                Predict_RidgeRegresion(x_train, x_test, y_train, y_test, 'Ridge5min'))
+            ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
             model = 'Random Forest Regressor'
-            mae, mse, rmse, errors, mape, accuracy = (
-                randomforestregressor(x_train, x_test, y_train, y_test, 'RandomForest5min.pkl'))
-            ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+            mae, mse, rmse, mape, mape_acc, accuracy = (
+                randomforestregressor(x_train, x_test, y_train, y_test, 'RandomForest5min'))
+            ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
             print(f'Ride: {ride}: Time: {timepoint}')
 
@@ -303,19 +318,19 @@ def run_daily_training(df):
         x_train, x_test, y_train, y_test = split_data(ride_df, target, test_size=0.2)
 
         model = 'Linear Regression'
-        mae, mse, rmse, errors, mape, accuracy = (
-            Predict_LinearRegresion(x_train, x_test, y_train, y_test, 'LinearDaily.pkl'))
-        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+        mae, mse, rmse, mape, mape_acc, accuracy = (
+            Predict_LinearRegresion(x_train, x_test, y_train, y_test, 'LinearDaily'))
+        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
         model = 'Ridge Regression'
-        mae, mse, rmse, errors, mape, accuracy = (
-            Predict_RidgeRegresion(x_train, x_test, y_train, y_test, 'RidgeDaily.pkl'))
-        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+        mmae, mse, rmse, mape, mape_acc, accuracy = (
+            Predict_RidgeRegresion(x_train, x_test, y_train, y_test, 'RidgeDaily'))
+        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
         model = 'Random Forest Regressor'
-        mae, mse, rmse, errors, mape, accuracy = (
-            randomforestregressor(x_train, x_test, y_train, y_test, 'RandomForestDaily.pkl'))
-        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+        mae, mse, rmse, mape, mape_acc, accuracy = (
+            randomforestregressor(x_train, x_test, y_train, y_test, 'RandomForestDaily'))
+        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
         print(f'Ride: {ride}')
 
@@ -332,40 +347,46 @@ def run_daily_training(df):
 
 def run_training(df):
 
-    ride_metrics = {'model': [], 'mae': [], 'mse': [], 'rmse': [], 'mape': [], 'accuracy': []}
+    ride_metrics = {'model': [], 'mae': [], 'mse': [], 'rmse': [],
+                    'mape': [], 'mape_acc': [], 'accuracy': []}
+    threshold = 10
 
     # reduce variability of targets
     target = df['Wait Time']
-    # target = np.log(timedata['Wait Time'])
-    # target.replace([np.inf, -np.inf], 0, inplace=True)
 
     df.drop(columns=['Date_Time', 'Wait Time'], inplace=True)
     # onehot encode the ride labels
     df = pd.get_dummies(df, columns=['Ride'])
 
     # 80% training & 25% testing
-    x_train, x_test, y_train, y_test = split_data(df, target, test_size=0.2)
+    x_train, x_test, y_train, y_test = split_data(df, target, test_size=0.3)
+    # x_val, x_test, y_val, y_test = split_data(x_test, y_test, test_size=0.6)
+
+    # Select MinMaxScaler for uniformly distributed features
+    scaler = MinMaxScaler()
+    x_train_scaled = scaler.fit_transform(x_train)
+    x_test_scaled = scaler.transform(x_test)
 
     model = 'Linear Regression'
-    mae, mse, rmse, errors, mape, accuracy = (
-        Predict_LinearRegresion(x_train, x_test, y_train, y_test, 'Linear.pkl'))
-    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+    mae, mse, rmse, mape, mape_acc, accuracy = (
+        Predict_LinearRegresion(x_train_scaled, x_test_scaled, y_train, y_test, threshold, 'Linear'))
+    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
     model = 'Ridge Regression'
-    mae, mse, rmse, errors, mape, accuracy = (
-        Predict_RidgeRegresion(x_train, x_test, y_train, y_test, 'Ridge.pkl'))
-    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+    mae, mse, rmse, mape, mape_acc, accuracy = (
+        Predict_RidgeRegresion(x_train_scaled, x_test_scaled, y_train, y_test, threshold, 'Ridge'))
+    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
     model = 'Random Forest Regressor'
-    mae, mse, rmse, errors, mape, accuracy = (
-        randomforestregressor(x_train, x_test, y_train, y_test, 'RandomForest.pkl'))
-    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
+    mmae, mse, rmse, mape, mape_acc, accuracy = (
+        randomforestregressor(x_train_scaled, x_test_scaled, y_train, y_test, threshold,'RandomForest'))
+    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
     metric_df = pd.DataFrame(ride_metrics)
     results = metric_df.groupby(by=['model']).mean()
 
     # results = pd.concat([results, ride_results])
-    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-complete.csv'))
+    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-normalised.csv'))
     print(results.shape)
 
     return
@@ -380,46 +401,9 @@ if __name__ == "__main__":
     # run_5min_training(df)
     # run_daily_training(df)
     run_training(df)
-    # todo:
-    #  build different modelling architectures - NNs
-    #  construct prediction pipline
-    #  run the predictions that include the rides in the data - onehot encodind the rides
+    # todo: make sure im normalising the data
+    # todo: build different modelling architectures - NNs
 
-    # results = pd.DataFrame()
-    #
-    #
-    # # ride_df = df[df['Ride'] == ride]
-    # # ride_df.drop(columns=['Date_Time', 'Ride'], inplace=True)
-    #
-    # ride_metrics = {'model': [], 'mae': [], 'mse': [], 'rmse': [], 'mape': [], 'accuracy': []}
-    #
-    # # reduce variability of targets
-    # target = df['Wait Time']
-    # # target = np.log(timedata['Wait Time'])
-    # # target.replace([np.inf, -np.inf], 0, inplace=True)
-    #
-    # df.drop(columns=['Date_Time','Wait Time'], inplace=True)
-    # # onehot encode the ride labels
-    # df_encoded = pd.get_dummies(df, columns=['Ride'])
-    #
-    # # 80% training & 25% testing
-    # x_train, x_test, y_train, y_test = split_data(df, target, test_size=0.2)
-    #
-    # model = 'Linear Regression'
-    # mae, mse, rmse, errors, mape, accuracy = Predict_LinearRegresion(x_train, x_test, y_train, y_test)
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
-    #
-    # model = 'Ridge Regression'
-    # mae, mse, rmse, errors, mape, accuracy = Predict_RidgeRegresion(x_train, x_test, y_train, y_test)
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
-    #
-    # model = 'Random Forest Regressor'
-    # mae, mse, rmse, errors, mape, accuracy = randomforestregressor(x_train, x_test, y_train, y_test)
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, accuracy)
-    #
-    # metric_df = pd.DataFrame(ride_metrics)
-    # results = metric_df.groupby(by=['model']).mean()
-    #
-    # # results = pd.concat([results, ride_results])
-    # results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-complete.csv'))
-    # print (results.shape)
+
+
+
