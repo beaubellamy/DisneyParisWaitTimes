@@ -63,7 +63,10 @@ def update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy
     ride_metrics['rmse'].append(rmse)
     ride_metrics['mape'].append(mape.mean())
     ride_metrics['mape_acc'].append(mape_acc)
-    ride_metrics['accuracy'].append(accuracy)
+    ride_metrics['accuracy05'].append(accuracy['accuracy05'])
+    ride_metrics['accuracy10'].append(accuracy['accuracy10'])
+    ride_metrics['accuracy15'].append(accuracy['accuracy15'])
+    ride_metrics['accuracy20'].append(accuracy['accuracy20'])
 
     return ride_metrics
 
@@ -94,7 +97,12 @@ def Predict_LinearRegresion(x_train, x_test, y_train, y_test, threshold, model_n
     # adjusted mae
     mae2 = abs(y_pred - y_test)
     mae2.replace([np.inf, -np.inf], 0, inplace=True)
-    accuracy = 1 - mae2[mae2 > threshold].shape[0] / mae2.shape[0]
+    accuracy = {
+        'accuracy05': 1 - mae2[mae2 > 5].shape[0] / mae2.shape[0],
+        'accuracy10': 1 - mae2[mae2 > 10].shape[0] / mae2.shape[0],
+        'accuracy15': 1 - mae2[mae2 > 15].shape[0] / mae2.shape[0],
+        'accuracy20':  1 - mae2[mae2 > 20].shape[0] / mae2.shape[0]
+    }
 
     return mae, mse, rmse, mape, mape_acc, accuracy
 
@@ -125,7 +133,12 @@ def Predict_RidgeRegresion(x_train, x_test, y_train, y_test, threshold, model_na
     # adjusted mae
     mae2 = abs(y_pred - y_test)
     mae2.replace([np.inf, -np.inf], 0, inplace=True)
-    accuracy = 1 - mae2[mae2 > threshold].shape[0] / mae2.shape[0]
+    accuracy = {
+        'accuracy05': 1 - mae2[mae2 > 5].shape[0] / mae2.shape[0],
+        'accuracy10': 1 - mae2[mae2 > 10].shape[0] / mae2.shape[0],
+        'accuracy15': 1 - mae2[mae2 > 15].shape[0] / mae2.shape[0],
+        'accuracy20': 1 - mae2[mae2 > 20].shape[0] / mae2.shape[0]
+    }
 
     return mae, mse, rmse, mape, mape_acc, accuracy
 
@@ -247,7 +260,12 @@ def randomforestregressor(X_train, X_test, y_train, y_test, threshold, model_nam
     # adjusted mae
     mae2 = abs(y_pred - y_test)
     mae2.replace([np.inf, -np.inf], 0, inplace=True)
-    accuracy = 1 - mae2[mae2 > threshold].shape[0] / mae2.shape[0]
+    accuracy = {
+        'accuracy05': 1 - mae2[mae2 > 5].shape[0] / mae2.shape[0],
+        'accuracy10': 1 - mae2[mae2 > 10].shape[0] / mae2.shape[0],
+        'accuracy15': 1 - mae2[mae2 > 15].shape[0] / mae2.shape[0],
+        'accuracy20': 1 - mae2[mae2 > 20].shape[0] / mae2.shape[0]
+    }
 
     return mae, mse, rmse, mape, mape_acc, accuracy
 
@@ -351,7 +369,8 @@ def run_daily_training(df):
 def run_training(df):
 
     ride_metrics = {'model': [], 'mae': [], 'mse': [], 'rmse': [],
-                    'mape': [], 'mape_acc': [], 'accuracy': []}
+                    'mape': [], 'mape_acc': [], 'accuracy05': [],
+                    'accuracy10': [], 'accuracy15': [], 'accuracy20': []}
     threshold = 10
 
 
@@ -410,7 +429,7 @@ def run_training(df):
     results = metric_df.groupby(by=['model']).mean()
 
     # results = pd.concat([results, ride_results])
-    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-normalised.csv'))
+    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-thresholds.csv'))
     print(results.shape)
 
     return
