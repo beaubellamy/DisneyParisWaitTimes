@@ -4,12 +4,14 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from datetime import timedelta
+
+from keras.src.backend.jax.random import dropout
 from sklearn.metrics import accuracy_score
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 import matplotlib.pyplot as plt
 import time
 import logging
-from src.settings import INPUT_FOLDER, OUTPUT_FOLDER, PROCESSED_FOLDER
+from src.settings import MODELS_FOLDER, PROCESSED_FOLDER
 import pandas as pd
 import numpy as np
 
@@ -21,6 +23,11 @@ from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from pandas.plotting import autocorrelation_plot
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras import optimizers
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, Ridge
@@ -77,8 +84,9 @@ def Predict_LinearRegresion(x_train, x_test, y_train, y_test, threshold, model_n
     # Make Prediction on test set
     y_pred = lm.predict(x_test)
 
+    model_file = os.path.join(MODELS_FOLDER, f'{model_name}.pkl')
     # Save the model
-    with open(f'{model_name}.pkl', 'wb') as file:
+    with open(model_file, 'wb') as file:
         pickle.dump(model, file)
 
     # Calculate metricx
@@ -113,8 +121,9 @@ def Predict_RidgeRegresion(x_train, x_test, y_train, y_test, threshold, model_na
     model.fit(x_train, y_train)
     y_pred = model.predict(x_test)
 
+    model_file = os.path.join(MODELS_FOLDER, f'{model_name}.pkl')
     # Save the model
-    with open(f'{model_name}.pkl', 'wb') as file:
+    with open(model_file, 'wb') as file:
         pickle.dump(model, file)
 
     # Calculate metricx
@@ -235,8 +244,9 @@ def randomforestregressor(X_train, X_test, y_train, y_test, threshold, model_nam
     model = RandomForestRegressor(random_state=42, n_estimators=100)
     model.fit(X_train, y_train)
 
+    model_file = os.path.join(MODELS_FOLDER, f'{model_name}.pkl')
     # Save the model
-    with open(f'{model_name}.pkl', 'wb') as file:
+    with open(model_file, 'wb') as file:
         pickle.dump(model, file)
 
 
@@ -259,6 +269,72 @@ def randomforestregressor(X_train, X_test, y_train, y_test, threshold, model_nam
 
     # adjusted mae
     mae2 = abs(y_pred - y_test)
+    mae2.replace([np.inf, -np.inf], 0, inplace=True)
+    accuracy = {
+        'accuracy05': 1 - mae2[mae2 > 5].shape[0] / mae2.shape[0],
+        'accuracy10': 1 - mae2[mae2 > 10].shape[0] / mae2.shape[0],
+        'accuracy15': 1 - mae2[mae2 > 15].shape[0] / mae2.shape[0],
+        'accuracy20': 1 - mae2[mae2 > 20].shape[0] / mae2.shape[0]
+    }
+
+    return mae, mse, rmse, mape, mape_acc, accuracy
+
+
+def Predict_NeuralNetwork(X_train, X_test, y_train, y_test, epochs=50, batch_size=32, model_name='NeuralNetowrk'):
+
+    # Scale the data
+    # scaler = StandardScaler()
+    # X_train = scaler.fit_transform(X_train)
+    # X_test = scaler.transform(X_test)
+
+    # Build the model
+    model = Sequential([
+        Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
+        Dropout(0.3),  # 30% dropout to prevent overfitting
+        Dense(64, activation='relu'),
+        Dropout(0.3),
+        Dense(64, activation='relu'),
+        Dropout(0.3),
+        Dense(64, activation='relu'),
+        Dropout(0.3),
+        Dense(64, activation='relu'),
+        Dense(1)  # Output layer (regression task)
+    ])
+
+    # Compile the model
+    optimizer = optimizers.Adam(learning_rate=0.01)
+    model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mae'])
+
+    # todo: add sin and cos for time and day.
+
+
+
+    # Train the model
+    model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2)
+
+    # Evaluate the model
+    test_loss, test_mae = model.evaluate(X_test, y_test)
+    print(f'Test Mean Absolute Error: {test_mae:.4f}')
+
+    # Test the model
+    y_pred = model.predict(X_test)
+    mae = mean_absolute_error(y_test, y_pred)
+
+    # Calculate metricx
+    mae = metrics.mean_absolute_error(y_test, y_pred)
+    mse = metrics.mean_squared_error(y_test, y_pred)
+    rmse = np.sqrt(metrics.mean_squared_error(y_test, y_pred))
+    # accuracy_score(y_test, linear_predictions)
+
+    # Calculating Error
+    errors = round(metrics.mean_absolute_error(y_test, y_pred), 2)
+    # mean Absolute Percentage Error
+    mape = 100 * (errors / y_test)
+    mape.replace([np.inf, -np.inf], 0, inplace=True)
+    mape_acc = (100 - np.mean(mape))
+
+    # adjusted mae
+    mae2 = abs(y_pred[:,0] - y_test)
     mae2.replace([np.inf, -np.inf], 0, inplace=True)
     accuracy = {
         'accuracy05': 1 - mae2[mae2 > 5].shape[0] / mae2.shape[0],
@@ -373,32 +449,44 @@ def run_training(df):
                     'accuracy10': [], 'accuracy15': [], 'accuracy20': []}
     threshold = 10
 
-
+    # df = df.sample(frac=1).reset_index(drop=True)
 
     # target = np.log(timedata['Wait Time'])
     # target.replace([np.inf, -np.inf], 0, inplace=True)
 
+    # detatch the ride column for later re-attachment
+    ride_df = df['Ride']
+    df.drop(columns='Ride', inplace=True)
+
     # onehot encode the ride labels
-    df = pd.get_dummies(df, columns=['Ride'])
+    ride_encoded = pd.get_dummies(ride_df)
 
     # Manually split data
-    df['Date_Time'] = pd.to_datetime(df['Date_Time'])
-    train_date = df['Date_Time'].min().date() + timedelta(days=487)
-    test_date = df['Date_Time'].min().date() + timedelta(days=587)
-    train_df = df[df['Date_Time'] <= pd.to_datetime(train_date)]
-    test_df = df[(df['Date_Time'] > pd.to_datetime(train_date)) & (df['Date_Time'] <= pd.to_datetime(test_date))]
-    validation_df = df[df['Date_Time'] > pd.to_datetime(test_date)]
+    # df['Date_Time'] = pd.to_datetime(df['Date_Time'])
+    train_date = df['Date_Time'].min().date() + timedelta(days=487) # train: 487, test: 587, validation +
+    # test_date = df['Date_Time'].min().date() + timedelta(days=587)
+    train_idx = df[df['Date_Time'] <= pd.to_datetime(train_date)].index
+    # train_df = df[df['Date_Time'] <= pd.to_datetime(train_date)]
+    test_idx = df[df['Date_Time'] > pd.to_datetime(train_date)].index
+    # test_idx = df[(df['Date_Time'] > pd.to_datetime(train_date)) & (df['Date_Time'] <= pd.to_datetime(test_date))].index
+    # val_idx = df[df['Date_Time'] > pd.to_datetime(test_date)].index
+
+    # additional cyclic features
+    df['Day_sin'] = np.sin(2 * np.pi * df['Day'] / 7)
+    df['Day_cos'] = np.cos(2 * np.pi * df['Day'] / 7)
+    df['Time_sin'] = np.sin(2 * np.pi * df['Time'] / 1440)
+    df['Time_cos'] = np.cos(2 * np.pi * df['Time'] / 1440)
+    df.drop(columns=['Date_Time', 'Day', 'Time'], inplace=True)
 
     # extract the target
-    y_train = train_df['Wait Time']
-    y_test = test_df['Wait Time']
-    y_val = validation_df['Wait Time']
+    y_train = df.loc[train_idx, 'Wait Time']
+    y_test = df.loc[test_idx, 'Wait Time']
+    # y_val = df.loc[val_idx, 'Wait Time']
+    df.drop(columns=['Wait Time'], inplace=True)
 
-    x_train = train_df.drop(columns=['Date_Time', 'Wait Time'])
-    x_test = test_df.drop(columns=['Date_Time', 'Wait Time'])
-    x_val = validation_df.drop(columns=['Date_Time', 'Wait Time'])
-
-
+    x_train = df.loc[train_idx,:]
+    x_test = df.loc[test_idx,:]
+    # x_val = df.loc[val_idx,:]
 
     # 70% training & 30% testing
     # x_train, x_test, y_train, y_test = split_data(df, target, test_size=0.3)
@@ -408,22 +496,40 @@ def run_training(df):
     scaler = MinMaxScaler()
     x_train_scaled = scaler.fit_transform(x_train)
     x_test_scaled = scaler.transform(x_test)
-    x_val_scaled = scaler.transform(x_val)
+    # x_val_scaled = scaler.transform(x_val)
+    # todo: check the normalisation
 
-    model = 'Linear Regression'
+    # re-attatch the ride features - by design - normalised
+    x_train_scaled = pd.DataFrame(x_train_scaled)
+    x_test_scaled = pd.DataFrame(x_test_scaled)
+
+    x_train_scaled[ride_encoded.columns] = ride_encoded.loc[train_idx,:].astype(int)
+    x_test_scaled[ride_encoded.columns] = ride_encoded.loc[test_idx,:].astype(int)
+
+
+    with open(os.path.join(MODELS_FOLDER, 'scalar.pkl'), 'wb') as file:
+        pickle.dump(scaler, file)
+
+    # model = 'Linear Regression'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_LinearRegresion(x_train_scaled, x_test_scaled, y_train, y_test, threshold, 'Linear'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Ridge Regression'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_RidgeRegresion(x_train_scaled, x_test_scaled, y_train, y_test, threshold, 'Ridge'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Random Forest Regressor'
+    # mmae, mse, rmse, mape, mape_acc, accuracy = (
+    #     randomforestregressor(x_train_scaled, x_test_scaled, y_train, y_test, threshold,'RandomForest'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+
+    model = 'Neural network'
     mae, mse, rmse, mape, mape_acc, accuracy = (
-        Predict_LinearRegresion(x_train_scaled, x_test_scaled, y_train, y_test, threshold, 'Linear'))
+        Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, epochs=50, batch_size=64, model_name='NueralNetwork'))
     ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-
-    model = 'Ridge Regression'
-    mae, mse, rmse, mape, mape_acc, accuracy = (
-        Predict_RidgeRegresion(x_train_scaled, x_test_scaled, y_train, y_test, threshold, 'Ridge'))
-    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-
-    model = 'Random Forest Regressor'
-    mmae, mse, rmse, mape, mape_acc, accuracy = (
-        randomforestregressor(x_train_scaled, x_test_scaled, y_train, y_test, threshold,'RandomForest'))
-    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    # X_train, X_test, y_train, y_test, epochs = 50, batch_size = 32
 
     metric_df = pd.DataFrame(ride_metrics)
     results = metric_df.groupby(by=['model']).mean()
@@ -440,6 +546,10 @@ if __name__ == "__main__":
 
     model_data_file = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
     df = pd.read_csv(model_data_file)
+
+    df['Date_Time'] = pd.to_datetime(df['Date_Time'])
+    data_period = (df['Date_Time'].max() - df['Date_Time'].min()).days
+    print (f'period of data {data_period}')
 
     # run_5min_training(df)
     # run_daily_training(df)
