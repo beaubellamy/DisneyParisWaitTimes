@@ -1,7 +1,8 @@
 import os
 import glob
 import pandas as pd
-# from datetime import timedelta
+import numpy as np
+from datetime import timedelta
 
 from src.settings import INPUT_FOLDER, PROCESSED_FOLDER
 
@@ -109,6 +110,20 @@ def feature_sametime_lastmonth(df):
     return feature_previous_n_day(df, new_feature='LastMonth', n_days=28)
 
 
+def n_hourly_trend(df, hours=1):
+
+    n_rows = hours * 12  # convert hours to n rows
+    # Constant 5 min interval (12 rows) between each row, except when the date and/or ride changes
+    rise = df['Wait Time'] - df['Wait Time'].shift(n_rows)
+    run = hours * 60    # minutes
+    slope = rise/run
+    df[f'{hours}_hourly_trend'] = slope
+    mask = (df['Date'] == df['Date'].shift(n_rows)) & (df['Ride'] == df['Ride'].shift(n_rows))
+    df.loc[~mask, f'{hours}_hourly_trend'] = 0
+
+    return df[['Date_Time', 'Ride', f'{hours}_hourly_trend']]
+
+
 def resample_data(df):
 
     # ensure data has consistent intervals
@@ -183,12 +198,16 @@ if __name__ == "__main__":
     past7day = feature_past7day_average(combined_df)
     df7days_ago = feature_sametime_lastweek(combined_df)
     df28days_ago = feature_sametime_lastmonth(combined_df)
+    hourly_trend_df = n_hourly_trend(combined_df)
+    three_hourly_trend_df = n_hourly_trend(combined_df, hours=3)
 
     # Added all features to the dataframe
     combined_df2 = pd.merge(combined_df, yesterday_df, how='left', on=['Ride', 'Date_Time'])
     combined_df2 = pd.merge(combined_df2, past7day, how='left', on=['Ride', 'Date_Time'])
     combined_df2 = pd.merge(combined_df2, df7days_ago, how='left', on=['Ride', 'Date_Time'])
     combined_df2 = pd.merge(combined_df2, df28days_ago, how='left', on=['Ride', 'Date_Time'])
+    combined_df2 = pd.merge(combined_df2, hourly_trend_df, how='left', on=['Ride', 'Date_Time'])
+    combined_df2 = pd.merge(combined_df2, three_hourly_trend_df, how='left', on=['Ride', 'Date_Time'])
 
     # Ignore the first month of data - mostly null values for new features
     combined_df3 = combined_df2[combined_df2['Date'] > '2023-02-01']
@@ -199,8 +218,14 @@ if __name__ == "__main__":
 
     # Convert data types for modelling
     # combined_df3['Time2'] = combined_df3['Time'].map(lambda x: convert_datetime_sec_since_midnight(x))
-    combined_df3['Date'] = convert_datetime_to_unix_date(combined_df3['Date_Time'])
+    # combined_df3['Date'] = convert_datetime_to_unix_date(combined_df3['Date_Time'])
     combined_df3['Time'] = convert_datetime_to_sec_since_midnight(combined_df3['Date_Time'])
+    # additional cyclic features
+    combined_df3['Day_sin'] = np.sin(2 * np.pi * combined_df3['Day'] / 7)
+    combined_df3['Day_cos'] = np.cos(2 * np.pi * combined_df3['Day'] / 7)
+    combined_df3['Time_sin'] = np.sin(2 * np.pi * combined_df3['Time'] / 1440)
+    combined_df3['Time_cos'] = np.cos(2 * np.pi * combined_df3['Time'] / 1440)
+    combined_df3.drop(columns=['Date_Time', 'Day', 'Time'], inplace=True)
 
     combined_df3.drop(columns=['Yesterday', 'LastWeek', 'LastMonth'], inplace=True)
     # Save the combined DataFrame to a new CSV file
