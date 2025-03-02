@@ -305,10 +305,6 @@ def Predict_NeuralNetwork(X_train, X_test, y_train, y_test, epochs=50, batch_siz
     optimizer = optimizers.Adam(learning_rate=0.01)
     model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mae'])
 
-    # todo: add sin and cos for time and day.
-
-
-
     # Train the model
     model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2)
 

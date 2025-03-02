@@ -4,18 +4,18 @@
 Under Construction
 
 - Processing:
-
     - Processes the existing "downloaded" wait time files.
     - Merges this data with downloaded [historical weather data](https://www.wunderground.com/history/monthly/fr/mauregard/LFPG/date/2024-8)
 
 - Feature Engineering
-
   - generate different features that can be used to aid the training of the ML model
 
-- Training (under construction)
-  
+- Training
   - training a ML model to predict the next days wait times
-  
+
+- Predictions
+  - Select the prefered model and run `model_predictions` to produce the next days results
+    - Must set the required date.
 
 ## Day of attendance
 - Run `Live_Monitoring` 
