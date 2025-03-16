@@ -280,7 +280,26 @@ def randomforestregressor(X_train, X_test, y_train, y_test, threshold, model_nam
     return mae, mse, rmse, mape, mape_acc, accuracy
 
 
-def Predict_NeuralNetwork(X_train, X_test, y_train, y_test, epochs=50, batch_size=32, model_name='NeuralNetowrk'):
+def sequential_model(layers=5, units=64, dropout=0.3, input_shape=(1,)):
+    model = Sequential()
+
+    # Add the first layer with input shape
+    model.add(Dense(units, activation='relu', input_shape=input_shape))
+    model.add(Dropout(dropout))
+
+    # Dynamically add hidden layers
+    for _ in range(layers - 1):
+        model.add(Dense(units, activation='relu'))
+        model.add(Dropout(dropout))
+
+    # Output layer (regression)
+    model.add(Dense(1))
+
+
+    return model
+
+
+def Predict_NeuralNetwork(X_train, X_test, y_train, y_test, layers=5, epochs=50, batch_size=32, model_name='NeuralNetowrk'):
 
     # Scale the data
     # scaler = StandardScaler()
@@ -288,18 +307,7 @@ def Predict_NeuralNetwork(X_train, X_test, y_train, y_test, epochs=50, batch_siz
     # X_test = scaler.transform(X_test)
 
     # Build the model
-    model = Sequential([
-        Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
-        Dropout(0.3),  # 30% dropout to prevent overfitting
-        Dense(64, activation='relu'),
-        Dropout(0.3),
-        Dense(64, activation='relu'),
-        Dropout(0.3),
-        Dense(64, activation='relu'),
-        Dropout(0.3),
-        Dense(64, activation='relu'),
-        Dense(1)  # Output layer (regression task)
-    ])
+    model = sequential_model(layers=layers, units=batch_size, dropout=0.3, input_shape=(X_train.shape[1],))
 
     # Compile the model
     optimizer = optimizers.Adam(learning_rate=0.01)
@@ -307,6 +315,11 @@ def Predict_NeuralNetwork(X_train, X_test, y_train, y_test, epochs=50, batch_siz
 
     # Train the model
     model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2)
+
+    model_file = os.path.join(MODELS_FOLDER, f'{model_name}.pkl')
+    # Save the model
+    with open(model_file, 'wb') as file:
+        pickle.dump(model, file)
 
     # Evaluate the model
     test_loss, test_mae = model.evaluate(X_test, y_test)
@@ -449,30 +462,29 @@ def run_training(df):
 
     # target = np.log(timedata['Wait Time'])
     # target.replace([np.inf, -np.inf], 0, inplace=True)
+    ride_encoded = pd.DataFrame()
 
     # detatch the ride column for later re-attachment
-    ride_df = df['Ride']
-    df.drop(columns='Ride', inplace=True)
+    if len(df['Ride'].unique()) > 1:
+        ride_df = df['Ride']
+        df.drop(columns='Ride', inplace=True)
 
-    # onehot encode the ride labels
-    ride_encoded = pd.get_dummies(ride_df)
+        # onehot encode the ride labels
+        ride_encoded = pd.get_dummies(ride_df)
+    else:
+        ride = df.loc[0,'Ride'].replace(':', '').replace(' ', '_')
+        df.drop(columns=['Ride'], inplace=True)
 
     # Manually split data
     # df['Date_Time'] = pd.to_datetime(df['Date_Time'])
-    train_date = df['Date_Time'].min().date() + timedelta(days=487) # train: 487, test: 587, validation +
-    # test_date = df['Date_Time'].min().date() + timedelta(days=587)
-    train_idx = df[df['Date_Time'] <= pd.to_datetime(train_date)].index
-    # train_df = df[df['Date_Time'] <= pd.to_datetime(train_date)]
-    test_idx = df[df['Date_Time'] > pd.to_datetime(train_date)].index
-    # test_idx = df[(df['Date_Time'] > pd.to_datetime(train_date)) & (df['Date_Time'] <= pd.to_datetime(test_date))].index
-    # val_idx = df[df['Date_Time'] > pd.to_datetime(test_date)].index
-
-    # additional cyclic features
-    df['Day_sin'] = np.sin(2 * np.pi * df['Day'] / 7)
-    df['Day_cos'] = np.cos(2 * np.pi * df['Day'] / 7)
-    df['Time_sin'] = np.sin(2 * np.pi * df['Time'] / 1440)
-    df['Time_cos'] = np.cos(2 * np.pi * df['Time'] / 1440)
-    df.drop(columns=['Date_Time', 'Day', 'Time'], inplace=True)
+    train_date = df['Date'].min() + timedelta(days=587) # train: 587, test: +100,
+    # test_date = df['Date'].min() + timedelta(days=587)
+    train_idx = df[df['Date'] <= pd.to_datetime(train_date)].index
+    # train_df = df[df['Date'] <= pd.to_datetime(train_date)]
+    test_idx = df[df['Date'] > pd.to_datetime(train_date)].index
+    # test_idx = df[(df['Date'] > pd.to_datetime(train_date)) & (df['Date_Time'] <= pd.to_datetime(test_date))].index
+    # val_idx = df[df['Date'] > pd.to_datetime(test_date)].index
+    df.drop(columns=['Date'], inplace=True)
 
     # extract the target
     y_train = df.loc[train_idx, 'Wait Time']
@@ -484,6 +496,7 @@ def run_training(df):
     x_test = df.loc[test_idx,:]
     # x_val = df.loc[val_idx,:]
 
+    print (x_train.columns)
     # 70% training & 30% testing
     # x_train, x_test, y_train, y_test = split_data(df, target, test_size=0.3)
     # x_val, x_test, y_val, y_test = split_data(x_test, y_test, test_size=0.6)
@@ -493,18 +506,22 @@ def run_training(df):
     x_train_scaled = scaler.fit_transform(x_train)
     x_test_scaled = scaler.transform(x_test)
     # x_val_scaled = scaler.transform(x_val)
-    # todo: check the normalisation
+
+    with open(os.path.join(MODELS_FOLDER, f'{ride}_scalar.pkl'), 'wb') as file:
+        pickle.dump(scaler, file)
 
     # re-attatch the ride features - by design - normalised
-    x_train_scaled = pd.DataFrame(x_train_scaled)
-    x_test_scaled = pd.DataFrame(x_test_scaled)
+    x_train_scaled = pd.DataFrame(columns=x_train.columns, data=x_train_scaled)
+    x_test_scaled = pd.DataFrame(columns=x_test.columns, data=x_test_scaled)
 
-    x_train_scaled[ride_encoded.columns] = ride_encoded.loc[train_idx,:].astype(int)
-    x_test_scaled[ride_encoded.columns] = ride_encoded.loc[test_idx,:].astype(int)
+    if not ride_encoded.empty:
+        x_train_scaled.loc[:, ride_encoded.columns] = ride_encoded.loc[train_idx,:].reset_index().astype(int)
+        x_test_scaled.loc[:, ride_encoded.columns] = ride_encoded.loc[test_idx,:].reset_index().astype(int)
+
+    # x_train_scaled.to_csv(os.path.join(PROCESSED_FOLDER, 'scaled_train_set.csv'))
+    # x_test_scaled.to_csv(os.path.join(PROCESSED_FOLDER, 'scaled_test_set.csv'))
 
 
-    with open(os.path.join(MODELS_FOLDER, 'scalar.pkl'), 'wb') as file:
-        pickle.dump(scaler, file)
 
     # model = 'Linear Regression'
     # mae, mse, rmse, mape, mape_acc, accuracy = (
@@ -521,17 +538,97 @@ def run_training(df):
     #     randomforestregressor(x_train_scaled, x_test_scaled, y_train, y_test, threshold,'RandomForest'))
     # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
-    model = 'Neural network'
-    mae, mse, rmse, mape, mape_acc, accuracy = (
-        Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, epochs=50, batch_size=64, model_name='NueralNetwork'))
-    ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    # X_train, X_test, y_train, y_test, epochs = 50, batch_size = 32
+    # for layers in range(2,5):
+    layers = 2
+    for batch in [32, 64, 128]:
+        model = f'Neural Network {layers}-{batch}'
+        model_name = f'NeuralNetwork_{layers}-{batch}_{ride}'
+        mae, mse, rmse, mape, mape_acc, accuracy = (
+            Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=layers, epochs=50,
+                                  batch_size=batch, model_name=model_name))
+        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+
+    # model = 'Neural network 2-32'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=2, epochs=50,
+    #                           batch_size=32, model_name='NeuralNetwork_2-32'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Neural network 2-64'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=2, epochs=50,
+    #                           batch_size=64, model_name='NeuralNetwork_2-64'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Neural network 2-128'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=2, epochs=50,
+    #                           batch_size=128, model_name='NeuralNetwork_2-128'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+
+    # model = 'Neural network 3-32'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=3, epochs=50,
+    #                           batch_size=32, model_name='NeuralNetwork_3-32'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Neural network 3-64'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=3, epochs=50,
+    #                           batch_size=64, model_name='NeuralNetwork_3-64'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Neural network 3-128'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=3, epochs=50,
+    #                           batch_size=128, model_name='NeuralNetwork_3-128'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    #
+    # model = 'Neural network 4-32'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=4, epochs=50,
+    #                           batch_size=32, model_name='NeuralNetwork_4-32'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Neural network 4-64'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=4, epochs=50,
+    #                           batch_size=64, model_name='NeuralNetwork_4-64'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Neural network 4-128'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=4, epochs=50,
+    #                           batch_size=128, model_name='NeuralNetwork_4-128'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    #
+    # model = 'Neural network 5-32'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=5, epochs=50,
+    #                           batch_size=32, model_name='NeuralNetwork_5-32'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Neural network 5-64'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=5, epochs=50,
+    #                           batch_size=64, model_name='NeuralNetwork_5-64'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    #
+    # model = 'Neural network 5-128'
+    # mae, mse, rmse, mape, mape_acc, accuracy = (
+    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=5, epochs=50,
+    #                           batch_size=128, model_name='NeuralNetwork_5-128'))
+    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+
+
 
     metric_df = pd.DataFrame(ride_metrics)
     results = metric_df.groupby(by=['model']).mean()
 
     # results = pd.concat([results, ride_results])
-    results.to_csv(os.path.join(PROCESSED_FOLDER, 'avg_resuts-thresholds.csv'))
+    results.to_csv(os.path.join(PROCESSED_FOLDER, f'avg_resuts-thresholds_{ride}.csv'))
     print(results.shape)
 
     return
@@ -542,14 +639,20 @@ if __name__ == "__main__":
 
     model_data_file = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
     df = pd.read_csv(model_data_file)
+    df.drop(columns='Date_Time', inplace=True)
 
-    df['Date_Time'] = pd.to_datetime(df['Date_Time'])
-    data_period = (df['Date_Time'].max() - df['Date_Time'].min()).days
+    df['Date'] = pd.to_datetime(df['Date'])
+    data_period = (df['Date'].max() - df['Date'].min()).days
     print (f'period of data {data_period}')
+
+    for ride in df['Ride'].unique().tolist():
+        ride_df = df[df['Ride'] == ride].reset_index(drop=True)
+
+        run_training(ride_df)
 
     # run_5min_training(df)
     # run_daily_training(df)
-    run_training(df)
+    # run_training(df)
     # todo: make sure im normalising the data
     # todo: build different modelling architectures - NNs
 
