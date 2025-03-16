@@ -7,7 +7,8 @@ from src.settings import PROCESSED_FOLDER, MODELS_FOLDER, OUTPUT_FOLDER
 from src.Processing.processing_main import(
     convert_unix_date_to_datetime, convert_datetime_to_unix_date,
     feature_yesterday, feature_past7day_average,
-    feature_sametime_lastweek, feature_sametime_lastmonth)
+    feature_sametime_lastweek, feature_sametime_lastmonth,
+    n_hourly_trend)
 
 
 # todo: create df to generate the predictions for the next day for each ride
@@ -24,7 +25,7 @@ if __name__ == "__main__":
 
     # alternate pipeline
     # - run processing on the day of predictions
-    # - run the prediction on the last day of preocessed data
+    # - run the prediction on the last day of prepocessed data
     #   - modify the weather parameters
     #   - rolling metrics will have already been calculated
 
@@ -69,12 +70,16 @@ if __name__ == "__main__":
     past7day = feature_past7day_average(feature_df)
     df7days_ago = feature_sametime_lastweek(feature_df)
     df28days_ago = feature_sametime_lastmonth(feature_df)
+    hourly_trend_df = n_hourly_trend(feature_df)
+    three_hourly_trend_df = n_hourly_trend(feature_df, hours=3, new_feature='Rolling_28D_3hr_trend')
 
     # Added all features to the dataframe
     feature_df = pd.merge(feature_df, yesterday_df, how='left', on=['Ride', 'Date_Time'])
     feature_df = pd.merge(feature_df, past7day, how='left', on=['Ride', 'Date_Time'])
     feature_df = pd.merge(feature_df, df7days_ago, how='left', on=['Ride', 'Date_Time'])
     feature_df = pd.merge(feature_df, df28days_ago, how='left', on=['Ride', 'Date_Time'])
+    feature_df = pd.merge(feature_df, hourly_trend_df, how='left', on=['Ride', 'Date_Time'])
+    feature_df = pd.merge(feature_df, three_hourly_trend_df, how='left', on=['Ride', 'Date_Time'])
 
     feature_df['Date'] = convert_datetime_to_unix_date(feature_df['Date'])
 
