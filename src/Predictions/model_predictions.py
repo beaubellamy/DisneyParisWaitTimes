@@ -74,12 +74,10 @@ if __name__ == "__main__":
 
     feature_df = prediction_df[['Date_Time', 'Date', 'Time', 'Ride', 'Day', 'is_weekday', 'Wait Time']]
     # feature_df = prediction_df[['Date', 'Time', 'Ride', 'Day', 'is_weekday', 'Wait Time']]
-    # todo: think about how i need to address the date time fields - processed as cyclic fields and no longer have teh raw info
     # convert back to time, or process the cycle before calcaulting the new features in processing step
     feature_df['Date'] = pd.to_datetime(feature_df['Date'])
     feature_df['Date_Time'] = pd.to_datetime(feature_df['Date_Time'])
 
-    # todo: 'Date' field is not a common type.
     yesterday_df = feature_yesterday(feature_df)
     past7day = feature_past7day_average(feature_df)
     df7days_ago = feature_sametime_lastweek(feature_df)
@@ -153,7 +151,6 @@ if __name__ == "__main__":
         prediction_df['Ride'] = ride
 
         prediction = pd.concat([prediction, prediction_df])
-        # todo: add predictions to a single file - single DF
 
 
     prediction['Time'] = (np.arctan2(prediction['Time_sin'], prediction['Time_cos']) / (2 * np.pi)) * 1440
