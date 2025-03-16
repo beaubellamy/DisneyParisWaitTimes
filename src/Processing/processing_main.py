@@ -2,12 +2,19 @@ import os
 import glob
 import pandas as pd
 import numpy as np
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from src.settings import INPUT_FOLDER, PROCESSED_FOLDER
 
 def convert_datetime_to_sec_since_midnight(datetime):
     return datetime.dt.hour * 3600 + datetime.dt.minute * 60 + datetime.dt.second
+
+
+def convert_datetime_to_min_since_midnight(time_series):
+    return time_series.apply(lambda x: x.hour * 60 + x.minute)
+
+# def convert_datetime_to_min_since_midnight(datetime):
+#     return datetime.dt.hour * 60 + datetime.dt.minute
 
 
 def convert_datetime_to_unix_date(datetime):
@@ -66,12 +73,8 @@ def feature_previous_n_day(df, new_feature='Yesterday', n_days=1):
 def feature_yesterday(df):
     return feature_previous_n_day(df,new_feature='Yesterday', n_days=1)
 
-
-def feature_past7day_average(df):
-    # rolling 7 day average for the specific time of the measurement
-
-    past7day_list = []
-
+def rolling_window(df, on_feature='Wait Time', window='7D', new_feature='new_feature'):
+    rolling_list = []
     for ride in df['Ride'].unique().tolist():
         for ride_time in df['Time'].unique().tolist():
 
@@ -84,15 +87,15 @@ def feature_past7day_average(df):
             # for a date that is outside the intended 7 day range
             # Todo: ensure the df has a measurment for everyday and every time interval (NaN), so this
             #  window function will be correct - this should be done after processDisneyRideWaitTimes()
-            ride_data['Shifted_Wait_Time'] = ride_data['Wait Time'].shift(1)
+            ride_data['Shifted_feature'] = ride_data[on_feature].shift(1)
 
             # ride_data['Rolling_Avg_7_Days'] = ride_data['Wait Time'].rolling(window=7, min_periods=1).mean()
-            ride_data['Rolling_Avg_7_Days'] = ride_data['Shifted_Wait_Time'].rolling(window='7D', min_periods=1).mean()
+            ride_data[new_feature] = ride_data['Shifted_feature'].rolling(window=window, min_periods=1).mean()
 
-            past7day_list.append(ride_data[['Ride', 'Date_Time', 'Rolling_Avg_7_Days']])
+            rolling_list.append(ride_data[['Ride', 'Date_Time', new_feature]])
 
     # Construct the final df with all rides and resulting average 7 day wate time
-    final_df = pd.concat(past7day_list, ignore_index=True)
+    final_df = pd.concat(rolling_list, ignore_index=True)
 
     final_df.sort_values(by=['Ride', 'Date_Time'], inplace=True)
     final_df.reset_index(inplace=True, drop=True)
@@ -225,7 +228,7 @@ if __name__ == "__main__":
 
     # merge weather data with ride wait times
     combined_df = pd.merge(wait_time_df,
-                           weather[['Date', 'Max Temp', 'Avg Temp', 'min Temp', 'Precipitation']],
+                           weather[['Date', 'Max Temp', 'Avg Temp']],
                            on='Date')
     combined_df['Date'] = pd.to_datetime(combined_df['Date'])
 
@@ -254,15 +257,18 @@ if __name__ == "__main__":
     # Convert data types for modelling
     # combined_df3['Time2'] = combined_df3['Time'].map(lambda x: convert_datetime_sec_since_midnight(x))
     # combined_df3['Date'] = convert_datetime_to_unix_date(combined_df3['Date_Time'])
-    combined_df3['Time'] = convert_datetime_to_sec_since_midnight(combined_df3['Date_Time'])
+    combined_df3['Time'] = convert_datetime_to_min_since_midnight(combined_df3['Date_Time'])
     # additional cyclic features
     combined_df3['Day_sin'] = np.sin(2 * np.pi * combined_df3['Day'] / 7)
     combined_df3['Day_cos'] = np.cos(2 * np.pi * combined_df3['Day'] / 7)
     combined_df3['Time_sin'] = np.sin(2 * np.pi * combined_df3['Time'] / 1440)
     combined_df3['Time_cos'] = np.cos(2 * np.pi * combined_df3['Time'] / 1440)
-    combined_df3.drop(columns=['Date_Time', 'Day', 'Time'], inplace=True)
+    combined_df3.drop(columns =['Day', 'Time'], inplace=True)
+    # Reminder 'Date Time' field is needed for predictions to merge
 
-    combined_df3.drop(columns=['Yesterday', 'LastWeek', 'LastMonth'], inplace=True)
+    combined_df3.drop(columns=['Yesterday', 'LastWeek', 'LastMonth',
+                               '1_hourly_trend', '3_hourly_trend'], inplace=True)
+
     # Save the combined DataFrame to a new CSV file
     combined_df3.to_csv(os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv'), index=False)
 
