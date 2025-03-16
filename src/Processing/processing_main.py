@@ -100,6 +100,39 @@ def feature_past7day_average(df):
     return final_df
 
 
+def feature_past7day_average(df):
+    # rolling 7 day average for the specific time of the measurement
+    return rolling_window(df, on_feature='Wait Time', window='7D', new_feature='Rolling_Avg_7_Days')
+    # past7day_list = []
+    #
+    # for ride in df['Ride'].unique().tolist():
+    #     for ride_time in df['Time'].unique().tolist():
+    #
+    #         ride_data = df[(df['Ride'] == ride) & (df['Time'] == ride_time)]
+    #         ride_data = ride_data.set_index('Date')
+    #
+    #         # Note: The shifting is to ensure we dont have a data leakage - only considering the past 7
+    #         # days of measurements (exclusive of "today")
+    #         # The data occassionally has missing data, so when this shifting occurs, it can bring in data
+    #         # for a date that is outside the intended 7 day range
+    #         # Todo: ensure the df has a measurment for everyday and every time interval (NaN), so this
+    #         #  window function will be correct - this should be done after processDisneyRideWaitTimes()
+    #         ride_data['Shifted_Wait_Time'] = ride_data['Wait Time'].shift(1)
+    #
+    #         # ride_data['Rolling_Avg_7_Days'] = ride_data['Wait Time'].rolling(window=7, min_periods=1).mean()
+    #         ride_data['Rolling_Avg_7_Days'] = ride_data['Shifted_Wait_Time'].rolling(window='7D', min_periods=1).mean()
+    #
+    #         past7day_list.append(ride_data[['Ride', 'Date_Time', 'Rolling_Avg_7_Days']])
+    #
+    # # Construct the final df with all rides and resulting average 7 day wate time
+    # final_df = pd.concat(past7day_list, ignore_index=True)
+    #
+    # final_df.sort_values(by=['Ride', 'Date_Time'], inplace=True)
+    # final_df.reset_index(inplace=True, drop=True)
+    #
+    # return final_df
+
+
 def feature_sametime_lastweek(df):
     # measurment for the same time of day, 7 days ago
     return feature_previous_n_day(df, new_feature='LastWeek', n_days=7)
@@ -110,7 +143,7 @@ def feature_sametime_lastmonth(df):
     return feature_previous_n_day(df, new_feature='LastMonth', n_days=28)
 
 
-def n_hourly_trend(df, hours=1):
+def n_hourly_trend(df, hours=1, new_feature='Rolling_28D_hr_trend'):
 
     n_rows = hours * 12  # convert hours to n rows
     # Constant 5 min interval (12 rows) between each row, except when the date and/or ride changes
@@ -120,9 +153,11 @@ def n_hourly_trend(df, hours=1):
     df[f'{hours}_hourly_trend'] = slope
     mask = (df['Date'] == df['Date'].shift(n_rows)) & (df['Ride'] == df['Ride'].shift(n_rows))
     df.loc[~mask, f'{hours}_hourly_trend'] = 0
-
-    return df[['Date_Time', 'Ride', f'{hours}_hourly_trend']]
-
+    # calcaulte the average slopw for the last month - assing it to the current time
+    # return df[['Date_Time', 'Ride', f'{hours}_hourly_trend']]
+    new_df = rolling_window(df, on_feature=f'{hours}_hourly_trend', window='28D', new_feature=new_feature)
+    # check that only data time, ride and new feature is returned
+    return new_df
 
 def resample_data(df):
 
@@ -199,7 +234,7 @@ if __name__ == "__main__":
     df7days_ago = feature_sametime_lastweek(combined_df)
     df28days_ago = feature_sametime_lastmonth(combined_df)
     hourly_trend_df = n_hourly_trend(combined_df)
-    three_hourly_trend_df = n_hourly_trend(combined_df, hours=3)
+    three_hourly_trend_df = n_hourly_trend(combined_df, hours=3, new_feature='Rolling_28D_3hr_trend')
 
     # Added all features to the dataframe
     combined_df2 = pd.merge(combined_df, yesterday_df, how='left', on=['Ride', 'Date_Time'])
