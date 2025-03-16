@@ -17,6 +17,18 @@ Under Construction
   - Select the prefered model and run `model_predictions` to produce the next days results
     - Must set the required date.
 
+- Visualisation (under construction)
+  - produce visualisation that can be viewed while at the park to:
+    1. test predictions in live environment
+    2. assess which rides we should be targeting throughout the day
+
+### Workflow
+1. `processing_main`
+2. `model_training`
+3. `model_predictions`
+4. `visualise_predictions` - not yet constructed
+
+
 ## Day of attendance
 - Run `Live_Monitoring` 
 
