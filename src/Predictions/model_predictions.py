@@ -13,39 +13,13 @@ from src.Processing.processing_main import(
     n_hourly_trend)
 
 
-# todo: create df to generate the predictions for the next day for each ride
-
-if __name__ == "__main__":
-
-    prediction_date = '2024-12-31'
-    # model_name = 'Linear'
-    model_name = 'NeuralNetwork_2-32'
-
-    # Weather data for the day
-    min_temp = 34
-    avg_temp = 37
-    max_temp = 39
-    precipitation = 0
-
-    # alternate pipeline
-    # - run processing on the day of predictions
-    # - run the prediction on the last day of prepocessed data
-    #   - modify the weather parameters
-    #   - rolling metrics will have already been calculated
-
-    # prediction_file = os.path.join(PROCESSED_FOLDER, 'prediction_template2.csv')
-    # prediction_df = pd.read_csv(prediction_file)
-    historical_data = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
-    historical_df = pd.read_csv(historical_data)
-    historical_df['Date_Time'] = pd.to_datetime(historical_df['Date_Time'])
-    # historical_df['Date'] = convert_unix_date_to_datetime(historical_df['Date'])
-
+def create_prediction_data(historical_df):
     # create a copy of 1 day to emulate the prediction day data
     prediction_df = historical_df[historical_df['Date'] == historical_df['Date'].max()].reset_index(drop=True)
 
-     # update the date information
+    # update the date information
     # prediction_date = pd.to_datetime('28/01/2025')
-    prediction_datetime = pd.to_datetime(prediction_date)
+    # prediction_datetime = pd.to_datetime(prediction_date)
     prediction_df['Date'] = prediction_datetime.date()
     prediction_df['Date_Time'] = pd.to_datetime(prediction_df['Date_Time'])
 
@@ -59,7 +33,6 @@ if __name__ == "__main__":
     # prediction_df['Day'] = prediction_datetime.weekday()
     # prediction_df['is_weekday'] = int(prediction_datetime.weekday() < 5)
 
-
     # rolling measures
     # prediction_df['Yesterday_wait_time'] = -9
     # prediction_df['Rolling_Avg_7_Days'] = -9
@@ -72,6 +45,10 @@ if __name__ == "__main__":
     prediction_df['Day'] = prediction_df['Date_Time'].dt.weekday
     prediction_df['is_weekday'] = (prediction_df['Date_Time'].dt.weekday < 5).astype(int)
 
+    return prediction_df
+
+
+def build_prediction_features(prediction_df):
     feature_df = prediction_df[['Date_Time', 'Date', 'Time', 'Ride', 'Day', 'is_weekday', 'Wait Time']]
     # feature_df = prediction_df[['Date', 'Time', 'Ride', 'Day', 'is_weekday', 'Wait Time']]
     # convert back to time, or process the cycle before calcaulting the new features in processing step
@@ -93,22 +70,10 @@ if __name__ == "__main__":
     feature_df = pd.merge(feature_df, hourly_trend_df, how='left', on=['Ride', 'Date_Time'])
     feature_df = pd.merge(feature_df, three_hourly_trend_df, how='left', on=['Ride', 'Date_Time'])
 
-    # feature_df['Date'] = convert_datetime_to_unix_date(feature_df['Date'])
-    # feature_df['Time'] = convert_datetime_to_min_since_midnight(feature_df['Date_Time'])
+    return feature_df
 
-    # prediction_df['Date'] = int(pd.to_datetime(prediction_date).timestamp())
 
-    # extract the data for the day of prediction
-    feature_df = feature_df[feature_df['Date_Time'] > prediction_datetime]
-    feature_df.drop(columns=['Date_Time', 'Yesterday', 'LastWeek', 'LastMonth', 'Wait Time'], inplace=True)
-    # may need to drop 'Wait Time'
-
-    # weather from public forecasts
-    feature_df['Max Temp'] = max_temp
-    feature_df['Avg Temp'] = avg_temp
-    # feature_df['min Temp'] = min_temp
-    # feature_df['Precipitation'] = precipitation
-    # todo: merge in current weather data
+def add_time_feaures(feature_df):
     feature_df['Time'] = convert_datetime_to_min_since_midnight(feature_df['Time'])
     feature_df['Day_sin'] = np.sin(2 * np.pi * feature_df['Day'] / 7)
     feature_df['Day_cos'] = np.cos(2 * np.pi * feature_df['Day'] / 7)
@@ -116,6 +81,9 @@ if __name__ == "__main__":
     feature_df['Time_cos'] = np.cos(2 * np.pi * feature_df['Time'] / 1440)
     feature_df.drop(columns=['Date', 'Day', 'Time'], inplace=True)
 
+    return feature_df
+
+def predict_ride_wait_times(feature_df, model_name):
     # feature_df = pd.get_dummies(feature_df, columns=['Ride'])
     # Loop through each ride and load the required model
     prediction = pd.DataFrame()
@@ -128,11 +96,10 @@ if __name__ == "__main__":
 
         prediction_df = feature_df[feature_df['Ride'] == ride]
         prediction_df = prediction_df[['is_weekday', 'Max Temp', 'Avg Temp',
-                                  'Yesterday_wait_time', 'Rolling_Avg_7_Days',
-                                  'LastWeek_wait_time', 'LastMonth_wait_time',
-                                  'Rolling_28D_hr_trend', 'Rolling_28D_3hr_trend',
-                                  'Day_sin', 'Day_cos', 'Time_sin', 'Time_cos']]
-
+                                       'Yesterday_wait_time', 'Rolling_Avg_7_Days',
+                                       'LastWeek_wait_time', 'LastMonth_wait_time',
+                                       'Rolling_28D_hr_trend', 'Rolling_28D_3hr_trend',
+                                       'Day_sin', 'Day_cos', 'Time_sin', 'Time_cos']]
 
         # 'Ride_Avengers Assemble: Flight Force',
         # 'Ride_Buzz Lightyear Laser Blast', 'Ride_Cars Quatre Roues Rallye',
@@ -152,6 +119,51 @@ if __name__ == "__main__":
 
         prediction = pd.concat([prediction, prediction_df])
 
+    return prediction
+
+
+
+if __name__ == "__main__":
+
+    prediction_date = '2024-12-31'
+    prediction_datetime = pd.to_datetime(prediction_date)
+    # model_name = 'Linear'
+    model_name = 'NeuralNetwork_2-32'
+
+    # Weather data for the day
+    # min_temp = 34
+    avg_temp = 37
+    max_temp = 39
+    # precipitation = 0
+
+    # alternate pipeline
+    # - run processing on the day of predictions
+    # - run the prediction on the last day of prepocessed data
+    #   - modify the weather parameters
+    #   - rolling metrics will have already been calculated
+
+    historical_data = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
+    historical_df = pd.read_csv(historical_data)
+    historical_df['Date_Time'] = pd.to_datetime(historical_df['Date_Time'])
+
+    validation_df = historical_df[historical_df['Date'] == prediction_date]
+
+    prediction_df = create_prediction_data(historical_df)
+
+    feature_df = build_prediction_features(prediction_df)
+
+    # extract the data for the day of prediction
+    feature_df = feature_df[feature_df['Date_Time'] > prediction_datetime]
+    feature_df.drop(columns=['Date_Time', 'Yesterday', 'LastWeek', 'LastMonth', 'Wait Time'], inplace=True)
+    # may need to drop 'Wait Time'
+
+    # weather from public forecasts
+    feature_df['Max Temp'] = max_temp
+    feature_df['Avg Temp'] = avg_temp
+
+    feature_df = add_time_feaures(feature_df)
+
+    prediction = predict_ride_wait_times(feature_df, model_name)
 
     prediction['Time'] = (np.arctan2(prediction['Time_sin'], prediction['Time_cos']) / (2 * np.pi)) * 1440
     prediction['Time'] %= 1440
