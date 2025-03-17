@@ -166,7 +166,7 @@ def resample_data(df):
 
     # ensure data has consistent intervals
     min_date = min(df['Date_Time'].dt.date)
-    max_date = max(df['Date_Time'].dt.date)
+    max_date = max(df['Date_Time'].dt.date) + timedelta(days=1)
     # set the data interval
     reference_data_time = pd.date_range(start=min_date, end=max_date, freq='5 min')
 

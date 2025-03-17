@@ -5,6 +5,7 @@ Under Construction
 
 - Processing:
     - Processes the existing "downloaded" wait time files.
+    - [More data can be found here](https://www.thrill-data.com/users/login)
     - Merges this data with downloaded [historical weather data](https://www.wunderground.com/history/monthly/fr/mauregard/LFPG/date/2024-8)
 
 - Feature Engineering
