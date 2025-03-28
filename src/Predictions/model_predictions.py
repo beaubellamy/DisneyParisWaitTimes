@@ -3,6 +3,7 @@ import joblib
 import pickle
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from datetime import datetime, timezone
 from src.settings import PROCESSED_FOLDER, MODELS_FOLDER, OUTPUT_FOLDER
 from src.Processing.processing_main import(
@@ -41,19 +42,19 @@ def create_prediction_data(historical_df):
 
     # append the prediction day to the hisorical data to include the hstorical rolling averages
     prediction_df = pd.concat([historical_df, prediction_df]).reset_index(drop=True)
-    prediction_df['Time'] = prediction_df['Date_Time'].dt.time
-    prediction_df['Day'] = prediction_df['Date_Time'].dt.weekday
     prediction_df['is_weekday'] = (prediction_df['Date_Time'].dt.weekday < 5).astype(int)
 
     return prediction_df
 
 
 def build_prediction_features(prediction_df):
-    feature_df = prediction_df[['Date_Time', 'Date', 'Time', 'Ride', 'Day', 'is_weekday', 'Wait Time']]
+    feature_df = prediction_df[['Date_Time', 'Date', 'Ride', 'is_weekday', 'Wait Time']]
     # feature_df = prediction_df[['Date', 'Time', 'Ride', 'Day', 'is_weekday', 'Wait Time']]
     # convert back to time, or process the cycle before calcaulting the new features in processing step
     feature_df['Date'] = pd.to_datetime(feature_df['Date'])
     feature_df['Date_Time'] = pd.to_datetime(feature_df['Date_Time'])
+    feature_df['Time'] = feature_df['Date_Time'].dt.time
+    feature_df['Day'] = feature_df['Date_Time'].dt.weekday
 
     yesterday_df = feature_yesterday(feature_df)
     past7day = feature_past7day_average(feature_df)
@@ -75,10 +76,12 @@ def build_prediction_features(prediction_df):
 
 def add_time_feaures(feature_df):
     feature_df['Time'] = convert_datetime_to_min_since_midnight(feature_df['Time'])
-    feature_df['Day_sin'] = np.sin(2 * np.pi * feature_df['Day'] / 7)
-    feature_df['Day_cos'] = np.cos(2 * np.pi * feature_df['Day'] / 7)
-    feature_df['Time_sin'] = np.sin(2 * np.pi * feature_df['Time'] / 1440)
-    feature_df['Time_cos'] = np.cos(2 * np.pi * feature_df['Time'] / 1440)
+
+    feature_df['Day_sin'] = np.sin(2 * np.pi * feature_df['Day'] / 7).round(5)
+    feature_df['Day_cos'] = np.cos(2 * np.pi * feature_df['Day'] / 7).round(5)
+    feature_df['Time_sin'] = np.sin(2 * np.pi * feature_df['Time'] / 1440).round(5)
+    feature_df['Time_cos'] = np.cos(2 * np.pi * feature_df['Time'] / 1440).round(5)
+
     feature_df.drop(columns=['Date', 'Day', 'Time'], inplace=True)
 
     return feature_df
@@ -122,6 +125,40 @@ def predict_ride_wait_times(feature_df, model_name):
     return prediction
 
 
+def plot_wait_times(df, prediction_date):
+    """
+    Visualizes the actual vs predicted wait times for each ride throughout the day.
+
+    Parameters:
+    df (pd.DataFrame): A DataFrame containing columns: ['timestamp', 'ride', 'actual_wait', 'predicted_wait']
+    """
+    rides = df['Ride'].unique()
+
+    # plt.figure(figsize=(12, 6 ))
+
+    for i, ride in enumerate(rides, 1):
+        ride_data = df[df['Ride'] == ride]
+        ride_data = ride_data.sort_values(by='Time')
+
+        plt.figure(figsize=(12, 6))
+        plt.plot(ride_data['Time'], ride_data['Wait Time'], label='Actual Wait Time', marker='o')
+        plt.plot(ride_data['Time'], ride_data['pred_wait_time'], label='Predicted Wait Time', linestyle='--',
+                 marker='x')
+
+        plt.xlabel('Time')
+        plt.ylabel('Wait Time (minutes)')
+        plt.title(f'Wait Times for {ride}')
+        plt.suptitle(f'{prediction_date.strftime(format='%d-%m-%Y')}')
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.grid(True)
+
+        plt.tight_layout()
+        filename = f'{ride.replace(" ", "_").replace(":", "")}_{prediction_date.strftime(format="%Y%m%d")}.png'
+        plt.savefig(os.path.join(OUTPUT_FOLDER, filename))
+        plt.close()
+
+    return
 
 if __name__ == "__main__":
 
@@ -147,6 +184,7 @@ if __name__ == "__main__":
     historical_df['Date_Time'] = pd.to_datetime(historical_df['Date_Time'])
 
     validation_df = historical_df[historical_df['Date'] == prediction_date]
+    historical_df = historical_df[historical_df['Date'] < prediction_date]
 
     prediction_df = create_prediction_data(historical_df)
 
@@ -162,11 +200,21 @@ if __name__ == "__main__":
     feature_df['Avg Temp'] = avg_temp
 
     feature_df = add_time_feaures(feature_df)
-
+    feature_df.reset_index(inplace=True, drop=True)
     prediction = predict_ride_wait_times(feature_df, model_name)
+    validation_df[['Day_sin', 'Day_cos', 'Time_sin', 'Time_cos']] = validation_df[
+        ['Day_sin', 'Day_cos', 'Time_sin', 'Time_cos']].round(5)
+
+    prediction = pd.merge(prediction, validation_df[['Ride', 'Day_sin', 'Day_cos', 'Time_sin', 'Time_cos', 'Wait Time']],
+                   on=['Ride', 'Day_sin', 'Day_cos', 'Time_sin', 'Time_cos'])
 
     prediction['Time'] = (np.arctan2(prediction['Time_sin'], prediction['Time_cos']) / (2 * np.pi)) * 1440
     prediction['Time'] %= 1440
 
     output_filename = f'predictions_{prediction_date.replace('-','')}.csv'
     prediction.to_csv(os.path.join(OUTPUT_FOLDER, output_filename))
+
+    # todo: create visualisations of each ride.
+    # for loop over each ride
+    # ride = prediction[prediction['Ride'] == 'Avengers Assemble: Flight Force']
+    plot_wait_times(prediction, prediction_datetime.date())
