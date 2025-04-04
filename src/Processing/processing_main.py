@@ -224,6 +224,9 @@ if __name__ == "__main__":
     wait_time_df['Time'] = wait_time_df['Date_Time'].dt.time
     wait_time_df['Day'] = pd.to_datetime(wait_time_df['Date']).dt.weekday
     wait_time_df['is_weekday'] = (pd.to_datetime(wait_time_df['Date']).dt.weekday < 5).astype(int)
+    wait_time_df['Ride_closed'] = 0
+    wait_time_df.loc[wait_time_df['Wait Time'] == 0, 'Ride_closed'] = 1
+
     # combined_df['PublicHoliday'] = combined_df['Date_Time'].dt.time
 
     # merge weather data with ride wait times

@@ -56,6 +56,9 @@ def build_prediction_features(prediction_df):
     feature_df['Time'] = feature_df['Date_Time'].dt.time
     feature_df['Day'] = feature_df['Date_Time'].dt.weekday
 
+    feature_df['Ride_closed'] = 0
+    feature_df.loc[feature_df['Wait Time'] == 0, 'Ride_closed'] = 1
+
     yesterday_df = feature_yesterday(feature_df)
     past7day = feature_past7day_average(feature_df)
     df7days_ago = feature_sametime_lastweek(feature_df)
@@ -98,7 +101,7 @@ def predict_ride_wait_times(feature_df, model_name):
         scaler = joblib.load(os.path.join(MODELS_FOLDER, f'{ride_label}_scalar.pkl'))
 
         prediction_df = feature_df[feature_df['Ride'] == ride]
-        prediction_df = prediction_df[['is_weekday', 'Max Temp', 'Avg Temp',
+        prediction_df = prediction_df[['is_weekday', 'Ride_closed', 'Max Temp', 'Avg Temp',
                                        'Yesterday_wait_time', 'Rolling_Avg_7_Days',
                                        'LastWeek_wait_time', 'LastMonth_wait_time',
                                        'Rolling_28D_hr_trend', 'Rolling_28D_3hr_trend',
