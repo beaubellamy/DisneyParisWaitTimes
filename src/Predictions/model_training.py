@@ -538,89 +538,15 @@ def run_training(df):
     #     randomforestregressor(x_train_scaled, x_test_scaled, y_train, y_test, threshold,'RandomForest'))
     # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
-    # for layers in range(2,5):
-    layers = 2
-    for batch in [32, 64, 128]:
-        model = f'Neural Network {layers}-{batch}'
-        model_name = f'NeuralNetwork_{layers}-{batch}_{ride}'
-        mae, mse, rmse, mape, mape_acc, accuracy = (
-            Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=layers, epochs=50,
-                                  batch_size=batch, model_name=model_name))
-        ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-
-    # model = 'Neural network 2-32'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=2, epochs=50,
-    #                           batch_size=32, model_name='NeuralNetwork_2-32'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Neural network 2-64'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=2, epochs=50,
-    #                           batch_size=64, model_name='NeuralNetwork_2-64'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Neural network 2-128'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=2, epochs=50,
-    #                           batch_size=128, model_name='NeuralNetwork_2-128'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-
-    # model = 'Neural network 3-32'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=3, epochs=50,
-    #                           batch_size=32, model_name='NeuralNetwork_3-32'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Neural network 3-64'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=3, epochs=50,
-    #                           batch_size=64, model_name='NeuralNetwork_3-64'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Neural network 3-128'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=3, epochs=50,
-    #                           batch_size=128, model_name='NeuralNetwork_3-128'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    #
-    # model = 'Neural network 4-32'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=4, epochs=50,
-    #                           batch_size=32, model_name='NeuralNetwork_4-32'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Neural network 4-64'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=4, epochs=50,
-    #                           batch_size=64, model_name='NeuralNetwork_4-64'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Neural network 4-128'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=4, epochs=50,
-    #                           batch_size=128, model_name='NeuralNetwork_4-128'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    #
-    # model = 'Neural network 5-32'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=5, epochs=50,
-    #                           batch_size=32, model_name='NeuralNetwork_5-32'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Neural network 5-64'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=5, epochs=50,
-    #                           batch_size=64, model_name='NeuralNetwork_5-64'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Neural network 5-128'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=5, epochs=50,
-    #                           batch_size=128, model_name='NeuralNetwork_5-128'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    for layers in range(2,6):
+        for batch in [32, 64, 128]:
+            print (f'{ride}:: Training layers: {layers}, batch size: {batch}')
+            model = f'Neural Network {layers}-{batch}'
+            model_name = f'NeuralNetwork_{layers}-{batch}_{ride}'
+            mae, mse, rmse, mape, mape_acc, accuracy = (
+                Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=layers, epochs=50,
+                                      batch_size=batch, model_name=model_name))
+            ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
 
 

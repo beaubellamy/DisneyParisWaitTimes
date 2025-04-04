@@ -168,7 +168,11 @@ if __name__ == "__main__":
     prediction_date = '2024-12-31'
     prediction_datetime = pd.to_datetime(prediction_date)
     # model_name = 'Linear'
-    model_name = 'NeuralNetwork_2-32'
+    # model_name = 'NeuralNetwork_2-128'
+    # model_name = 'NeuralNetwork_3-128'
+    # model_name = 'NeuralNetwork_4-128'
+    model_name = 'NeuralNetwork_5-128'
+
 
     # Weather data for the day
     # min_temp = 34
