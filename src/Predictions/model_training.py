@@ -551,13 +551,15 @@ def run_training(df):
 
 
     metric_df = pd.DataFrame(ride_metrics)
-    results = metric_df.groupby(by=['model']).mean()
+    metric_df.to_csv(os.path.join(PROCESSED_FOLDER, f'{ride}_results.csv'))
+
+    results = metric_df.groupby(by=['model']).mean().reset_index(drop=True)
 
     # results = pd.concat([results, ride_results])
-    results.to_csv(os.path.join(PROCESSED_FOLDER, f'avg_resuts-thresholds_{ride}.csv'))
+    results.to_csv(os.path.join(PROCESSED_FOLDER, f'avg_model_results_{ride}.csv'))
     print(results.shape)
 
-    return
+    return metric_df
 
 
 if __name__ == "__main__":
@@ -571,10 +573,17 @@ if __name__ == "__main__":
     data_period = (df['Date'].max() - df['Date'].min()).days
     print (f'period of data {data_period}')
 
+    all_results = pd.DataFrame()
     for ride in df['Ride'].unique().tolist():
         ride_df = df[df['Ride'] == ride].reset_index(drop=True)
 
-        run_training(ride_df)
+        result_df = run_training(ride_df)
+        result_df['Ride'] = ride
+
+        all_results = pd.concat([all_results, result_df])
+
+    all_results.reset_index(inplace=True, drop=True)
+    all_results.to_csv(os.path.join(PROCESSED_FOLDER, 'all_ride_results.csv'))
 
     # run_5min_training(df)
     # run_daily_training(df)

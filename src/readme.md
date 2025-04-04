@@ -25,7 +25,7 @@ Under Construction
 
 ### Workflow
 1. `processing_main`
-2. `model_training`
+2. `model_training` - identify the preferred model for predictions
 3. `model_predictions`
 4. `visualise_predictions` - not yet constructed
 
