@@ -10,3 +10,6 @@
 /.vs/DisneyParisWaitTimes/FileContentIndex/*
 /data/*
 /src/wait_time*
+/src/DisneyParisHistoricalWaitTimes.pyproj
+/.idea/DisneyParisWaitTimes.iml
+/.idea/vcs.xml
