@@ -89,7 +89,7 @@ def add_time_feaures(feature_df):
 
     return feature_df
 
-def predict_ride_wait_times(feature_df, model_name):
+def predict_ride_wait_times(feature_df):
     # feature_df = pd.get_dummies(feature_df, columns=['Ride'])
     # Loop through each ride and load the required model
     prediction = pd.DataFrame()
@@ -97,7 +97,7 @@ def predict_ride_wait_times(feature_df, model_name):
         ride_label = ride.replace(':', '').replace(' ', '_')
 
         # load the prefered model
-        model = joblib.load(os.path.join(MODELS_FOLDER, f'{model_name}_{ride_label}.pkl'))
+        model = joblib.load(os.path.join(MODELS_FOLDER, f'{ride_label}.pkl'))
         scaler = joblib.load(os.path.join(MODELS_FOLDER, f'{ride_label}_scalar.pkl'))
 
         prediction_df = feature_df[feature_df['Ride'] == ride]
@@ -165,13 +165,13 @@ def plot_wait_times(df, prediction_date):
 
 if __name__ == "__main__":
 
-    prediction_date = '2024-12-31'
+    prediction_date = '2025-04-24'
     prediction_datetime = pd.to_datetime(prediction_date)
     # model_name = 'Linear'
     # model_name = 'NeuralNetwork_2-128'
     # model_name = 'NeuralNetwork_3-128'
     # model_name = 'NeuralNetwork_4-128'
-    model_name = 'NeuralNetwork_5-128'
+    # model_name = 'NeuralNetwork_5-128'
 
 
     # Weather data for the day

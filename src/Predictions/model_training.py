@@ -36,6 +36,34 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn import metrics
 
 
+import optuna
+
+def objective(trial, x_train, x_test, y_train, y_test, ride):
+    layers = trial.suggest_int("layers", 2, 6)
+    units = trial.suggest_categorical("units", [32, 64, 128])
+    dropout_rate = trial.suggest_float("dropout", 0.1, 0.5)
+    learning_rate = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128])
+    epochs = 50
+
+    model = Sequential()
+    model.add(Dense(units, activation='relu', input_shape=(x_train.shape[1],)))
+    model.add(Dropout(dropout_rate))
+
+    for _ in range(layers - 1):
+        model.add(Dense(units, activation='relu'))
+        model.add(Dropout(dropout_rate))
+
+    model.add(Dense(1))
+    optimizer = optimizers.Adam(learning_rate=learning_rate)
+    model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mae'])
+
+    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=0, validation_split=0.2)
+    _, test_mae = model.evaluate(x_test, y_test, verbose=0)
+
+    return test_mae  # Optuna will minimize this
+
+
 
 def split_data(df, target, test_size=0.2):
 
@@ -538,16 +566,35 @@ def run_training(df):
     #     randomforestregressor(x_train_scaled, x_test_scaled, y_train, y_test, threshold,'RandomForest'))
     # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
-    for layers in range(2,6):
-        for batch in [32, 64, 128]:
-            print (f'{ride}:: Training layers: {layers}, batch size: {batch}')
-            model = f'Neural Network {layers}-{batch}'
-            model_name = f'NeuralNetwork_{layers}-{batch}_{ride}'
-            mae, mse, rmse, mape, mape_acc, accuracy = (
-                Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=layers, epochs=50,
-                                      batch_size=batch, model_name=model_name))
-            ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
+    # for layers in range(2,6):
+    #     for batch in [32, 64, 128]:
+    #         print (f'{ride}:: Training layers: {layers}, batch size: {batch}')
+    #         model = f'Neural Network {layers}-{batch}'
+    #         model_name = f'NeuralNetwork_{layers}-{batch}_{ride}'
+    #         mae, mse, rmse, mape, mape_acc, accuracy = (
+    #             Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=layers, epochs=50,
+    #                                   batch_size=batch, model_name=model_name))
+    #         ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
 
+    ###########################
+    study = optuna.create_study(direction="minimize")
+    study.optimize(lambda trial: objective(trial, x_train_scaled, x_test_scaled, y_train, y_test, ride), n_trials=30)
+
+    # Get best parameters and evaluate
+    best_params = study.best_trial.params
+    print(f"Best hyperparameters for {ride}: {best_params}")
+
+    model_name = f"NeuralNetwork_Optuna_{ride}"
+    mae, mse, rmse, mape, mape_acc, accuracy = Predict_NeuralNetwork(
+        x_train_scaled, x_test_scaled, y_train, y_test,
+        layers=best_params['layers'],
+        epochs=50,
+        batch_size=best_params['batch_size'],
+        model_name=ride
+    )
+    ride_metrics = update_metrics(ride_metrics, model_name, mae, mse, rmse, mape, mape_acc, accuracy)
+
+    #################################
 
 
     metric_df = pd.DataFrame(ride_metrics)
