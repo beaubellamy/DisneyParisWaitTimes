@@ -546,36 +546,6 @@ def run_training(df):
         x_train_scaled.loc[:, ride_encoded.columns] = ride_encoded.loc[train_idx,:].reset_index().astype(int)
         x_test_scaled.loc[:, ride_encoded.columns] = ride_encoded.loc[test_idx,:].reset_index().astype(int)
 
-    # x_train_scaled.to_csv(os.path.join(PROCESSED_FOLDER, 'scaled_train_set.csv'))
-    # x_test_scaled.to_csv(os.path.join(PROCESSED_FOLDER, 'scaled_test_set.csv'))
-
-
-
-    # model = 'Linear Regression'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_LinearRegresion(x_train_scaled, x_test_scaled, y_train, y_test, threshold, 'Linear'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Ridge Regression'
-    # mae, mse, rmse, mape, mape_acc, accuracy = (
-    #     Predict_RidgeRegresion(x_train_scaled, x_test_scaled, y_train, y_test, threshold, 'Ridge'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-    #
-    # model = 'Random Forest Regressor'
-    # mmae, mse, rmse, mape, mape_acc, accuracy = (
-    #     randomforestregressor(x_train_scaled, x_test_scaled, y_train, y_test, threshold,'RandomForest'))
-    # ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-
-    # for layers in range(2,6):
-    #     for batch in [32, 64, 128]:
-    #         print (f'{ride}:: Training layers: {layers}, batch size: {batch}')
-    #         model = f'Neural Network {layers}-{batch}'
-    #         model_name = f'NeuralNetwork_{layers}-{batch}_{ride}'
-    #         mae, mse, rmse, mape, mape_acc, accuracy = (
-    #             Predict_NeuralNetwork(x_train_scaled, x_test_scaled, y_train, y_test, layers=layers, epochs=50,
-    #                                   batch_size=batch, model_name=model_name))
-    #         ride_metrics = update_metrics(ride_metrics, model, mae, mse, rmse, mape, mape_acc, accuracy)
-
     ###########################
     study = optuna.create_study(direction="minimize")
     study.optimize(lambda trial: objective(trial, x_train_scaled, x_test_scaled, y_train, y_test, ride), n_trials=30)

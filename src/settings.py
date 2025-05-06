@@ -1,11 +1,12 @@
 import os
 
 DATA_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+SRC_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src')
 
 INPUT_FOLDER = os.path.join(DATA_FOLDER, 'input')
 PROCESSED_FOLDER = os.path.join(DATA_FOLDER, 'processed')
 OUTPUT_FOLDER = os.path.join(DATA_FOLDER, 'output')
-MODELS_FOLDER = os.path.join(DATA_FOLDER, 'models')
+MODELS_FOLDER = os.path.join(SRC_FOLDER, 'models')
 
 def _create_if_needed(folder):
     if not os.path.exists(folder):

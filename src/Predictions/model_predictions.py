@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, timezone
-from src.settings import PROCESSED_FOLDER, MODELS_FOLDER, OUTPUT_FOLDER
+from src.settings import SRC_FOLDER, PROCESSED_FOLDER, MODELS_FOLDER, OUTPUT_FOLDER
 from src.Processing.processing_main import(
     convert_datetime_to_min_since_midnight,
     convert_unix_date_to_datetime, convert_datetime_to_unix_date,
@@ -89,6 +89,116 @@ def add_time_feaures(feature_df):
 
     return feature_df
 
+# def predict_ride_wait_times(feature_df):
+#     # feature_df = pd.get_dummies(feature_df, columns=['Ride'])
+#     # Loop through each ride and load the required model
+#     prediction = pd.DataFrame()
+#     for ride in feature_df['Ride'].unique().tolist():
+#         ride_label = ride.replace(':', '').replace(' ', '_')
+#
+#         # load the prefered model
+#         model = joblib.load(os.path.join(MODELS_FOLDER, f'{ride_label}.pkl'))
+#         scaler = joblib.load(os.path.join(MODELS_FOLDER, f'{ride_label}_scalar.pkl'))
+#
+#         prediction_df = feature_df[feature_df['Ride'] == ride]
+#         prediction_df = prediction_df[['is_weekday', 'Ride_closed', 'Max Temp', 'Avg Temp',
+#                                        'Yesterday_wait_time', 'Rolling_Avg_7_Days',
+#                                        'LastWeek_wait_time', 'LastMonth_wait_time',
+#                                        'Rolling_28D_hr_trend', 'Rolling_28D_3hr_trend',
+#                                        'Day_sin', 'Day_cos', 'Time_sin', 'Time_cos']]
+#
+#         # 'Ride_Avengers Assemble: Flight Force',
+#         # 'Ride_Buzz Lightyear Laser Blast', 'Ride_Cars Quatre Roues Rallye',
+#         # 'Ride_Cars ROAD TRIP', "Ride_Crush's Coaster", 'Ride_Indiana Jones and the Temple of Peril',
+#         # 'Ride_Les Mysteres du Nautilus', 'Ride_Orbitron', 'Ride_Phantom Manor',
+#         # 'Ride_Pirates of the Caribbean', 'Ride_Ratatouille: The Adventure',
+#         # 'Ride_Slinky Dog Zigzag Spin', 'Ride_Spider-Man W.E.B. Adventure',
+#         # 'Ride_Star Tours - The Adventure Continues',
+#         # 'Ride_Star Wars Hyperspace Mountain',
+#         # 'Ride_The Twilight Zone Tower of Terror',
+#         # 'Ride_Toy Soldiers Parachute Drop']]
+#         features = scaler.transform(prediction_df)
+#
+#         # make the predictions
+#         prediction_df['pred_wait_time'] = model.predict(features)
+#         prediction_df['Ride'] = ride
+#
+#         prediction = pd.concat([prediction, prediction_df])
+#
+#     return prediction
+
+
+def plot_wait_times(df, prediction_date):
+    """
+    Visualizes the actual vs predicted wait times for each ride throughout the day.
+
+    Parameters:
+    df (pd.DataFrame): A DataFrame containing columns: ['timestamp', 'ride', 'actual_wait', 'predicted_wait']
+    """
+    rides = df['Ride'].unique()
+
+    # plt.figure(figsize=(12, 6 ))
+
+    for i, ride in enumerate(rides, 1):
+        ride_data = df[df['Ride'] == ride]
+        ride_data = ride_data.sort_values(by='Time')
+
+        plt.figure(figsize=(12, 6))
+        plt.plot(ride_data['Time'], ride_data['Wait Time'], label='Actual Wait Time', marker='o')
+        plt.plot(ride_data['Time'], ride_data['pred_wait_time'], label='Predicted Wait Time', linestyle='--',
+                 marker='x')
+
+        plt.xlabel('Time')
+        plt.ylabel('Wait Time (minutes)')
+        plt.title(f'Wait Times for {ride}')
+        plt.suptitle(f'{prediction_date.strftime(format='%d-%m-%Y')}')
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.grid(True)
+
+        plt.tight_layout()
+        filename = f'{ride.replace(" ", "_").replace(":", "")}_{prediction_date.strftime(format="%Y%m%d")}.png'
+        plt.savefig(os.path.join(OUTPUT_FOLDER, filename))
+        plt.close()
+
+    return
+
+def create_prediction_file(prediction_date):
+
+    prediction_datetime = pd.to_datetime(prediction_date)
+    # Weather data for the day
+    # min_temp = 34
+    avg_temp = 37
+    max_temp = 39
+    # precipitation = 0
+
+    historical_data = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
+    historical_df = pd.read_csv(historical_data)
+    historical_df['Date_Time'] = pd.to_datetime(historical_df['Date_Time'])
+
+    validation_df = historical_df[historical_df['Date'] == prediction_date]
+    historical_df = historical_df[historical_df['Date'] < prediction_date]
+
+    prediction_df = create_prediction_data(historical_df)
+
+    feature_df = build_prediction_features(prediction_df)
+
+    # extract the data for the day of prediction
+    feature_df = feature_df[feature_df['Date_Time'] > prediction_datetime]
+    feature_df.drop(columns=['Date_Time', 'Yesterday', 'LastWeek', 'LastMonth', 'Wait Time'], inplace=True)
+    # may need to drop 'Wait Time'
+
+    # weather from public forecasts
+    feature_df['Max Temp'] = max_temp
+    feature_df['Avg Temp'] = avg_temp
+
+    feature_df = add_time_feaures(feature_df)
+    feature_df.reset_index(inplace=True, drop=True)
+
+    return feature_df, validation_df
+
+
+
 def predict_ride_wait_times(feature_df):
     # feature_df = pd.get_dummies(feature_df, columns=['Ride'])
     # Loop through each ride and load the required model
@@ -128,87 +238,18 @@ def predict_ride_wait_times(feature_df):
     return prediction
 
 
-def plot_wait_times(df, prediction_date):
-    """
-    Visualizes the actual vs predicted wait times for each ride throughout the day.
-
-    Parameters:
-    df (pd.DataFrame): A DataFrame containing columns: ['timestamp', 'ride', 'actual_wait', 'predicted_wait']
-    """
-    rides = df['Ride'].unique()
-
-    # plt.figure(figsize=(12, 6 ))
-
-    for i, ride in enumerate(rides, 1):
-        ride_data = df[df['Ride'] == ride]
-        ride_data = ride_data.sort_values(by='Time')
-
-        plt.figure(figsize=(12, 6))
-        plt.plot(ride_data['Time'], ride_data['Wait Time'], label='Actual Wait Time', marker='o')
-        plt.plot(ride_data['Time'], ride_data['pred_wait_time'], label='Predicted Wait Time', linestyle='--',
-                 marker='x')
-
-        plt.xlabel('Time')
-        plt.ylabel('Wait Time (minutes)')
-        plt.title(f'Wait Times for {ride}')
-        plt.suptitle(f'{prediction_date.strftime(format='%d-%m-%Y')}')
-        plt.xticks(rotation=45)
-        plt.legend()
-        plt.grid(True)
-
-        plt.tight_layout()
-        filename = f'{ride.replace(" ", "_").replace(":", "")}_{prediction_date.strftime(format="%Y%m%d")}.png'
-        plt.savefig(os.path.join(OUTPUT_FOLDER, filename))
-        plt.close()
-
-    return
 
 if __name__ == "__main__":
 
-    prediction_date = '2025-04-24'
+    prediction_date = '2025-04-23'
     prediction_datetime = pd.to_datetime(prediction_date)
-    # model_name = 'Linear'
-    # model_name = 'NeuralNetwork_2-128'
-    # model_name = 'NeuralNetwork_3-128'
-    # model_name = 'NeuralNetwork_4-128'
-    # model_name = 'NeuralNetwork_5-128'
 
+    feature_df, validation_df = create_prediction_file(prediction_date)
 
-    # Weather data for the day
-    # min_temp = 34
-    avg_temp = 37
-    max_temp = 39
-    # precipitation = 0
+    output_filename = f'features_{prediction_date.replace('-', '')}.csv'
+    feature_df.to_csv(os.path.join(SRC_FOLDER, output_filename))
 
-    # alternate pipeline
-    # - run processing on the day of predictions
-    # - run the prediction on the last day of prepocessed data
-    #   - modify the weather parameters
-    #   - rolling metrics will have already been calculated
-
-    historical_data = os.path.join(PROCESSED_FOLDER, 'data_wth_features.csv')
-    historical_df = pd.read_csv(historical_data)
-    historical_df['Date_Time'] = pd.to_datetime(historical_df['Date_Time'])
-
-    validation_df = historical_df[historical_df['Date'] == prediction_date]
-    historical_df = historical_df[historical_df['Date'] < prediction_date]
-
-    prediction_df = create_prediction_data(historical_df)
-
-    feature_df = build_prediction_features(prediction_df)
-
-    # extract the data for the day of prediction
-    feature_df = feature_df[feature_df['Date_Time'] > prediction_datetime]
-    feature_df.drop(columns=['Date_Time', 'Yesterday', 'LastWeek', 'LastMonth', 'Wait Time'], inplace=True)
-    # may need to drop 'Wait Time'
-
-    # weather from public forecasts
-    feature_df['Max Temp'] = max_temp
-    feature_df['Avg Temp'] = avg_temp
-
-    feature_df = add_time_feaures(feature_df)
-    feature_df.reset_index(inplace=True, drop=True)
-    prediction = predict_ride_wait_times(feature_df, model_name)
+    prediction = predict_ride_wait_times(feature_df)
     validation_df[['Day_sin', 'Day_cos', 'Time_sin', 'Time_cos']] = validation_df[
         ['Day_sin', 'Day_cos', 'Time_sin', 'Time_cos']].round(5)
 
@@ -225,3 +266,6 @@ if __name__ == "__main__":
     # for loop over each ride
     # ride = prediction[prediction['Ride'] == 'Avengers Assemble: Flight Force']
     plot_wait_times(prediction, prediction_datetime.date())
+
+    #todo: create function that creates the input file for the next day predictions
+    #todo: make predict.py a self contained file for deployment
